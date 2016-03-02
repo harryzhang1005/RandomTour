@@ -10,6 +10,6 @@ import UIKit
 
 class TourTabBarViewController: UITabBarController {
 
-    var pin: Pin?
+    var pin: Pin?   // current selected pin
 
 }

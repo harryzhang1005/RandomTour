@@ -32,11 +32,12 @@ class Pin: NSManagedObject {
 }
 
 extension Pin: MKAnnotation {
+    
     var coordinate: CLLocationCoordinate2D {
         get {
             return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         }
-        set {
+        set { // draggable pin also need set
             latitude = newValue.latitude
             longitude = newValue.longitude
         }

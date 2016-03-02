@@ -32,7 +32,9 @@ class PlacesTableViewController: UIViewController
         
         spinner.hidesWhenStopped = true
         
-        if let pin = (tabBarController as? TourTabBarViewController)?.pin { self.pin = pin }
+        if let pin = (tabBarController as? TourTabBarViewController)?.pin {
+            self.pin = pin
+        }
         
         setupMiniMapView()
         getGooglePlaces()
@@ -44,7 +46,7 @@ class PlacesTableViewController: UIViewController
         tabBarController?.title = "Places"
         
         if let pin = pin {
-            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by xxx meter
+            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
             miniMapView.setRegion(mapRegion, animated: false)
             miniMapView.addAnnotation(pin)
             //miniMapView.showAnnotations([pin], animated: true)
@@ -67,7 +69,9 @@ class PlacesTableViewController: UIViewController
             } else {
                 spinner.startAnimating()
                 GooglePlacesClient.sharedInstance.getGooglePlacesByPin(withPin: pin) { (result, error) -> Void in
+                    
                     dispatch_async(dispatch_get_main_queue()) { self.spinner.stopAnimating() }//mainQ
+                    
                     if error != nil {
                         print(error)
                     } else {
@@ -85,13 +89,17 @@ class PlacesTableViewController: UIViewController
             }
         }//pin
     }
+    
+    private struct Storyboards {
+        static let PlaceCell = "PlaceCell"              // Table view cell
+    }
 
 }
 
+// MARK: - Table view data source
+
 extension PlacesTableViewController: UITableViewDataSource
 {
-    // MARK: - Table view data source
-    
     func numberOfSectionsInTableView(tableView: UITableView) -> Int {
         return 1
     }
@@ -102,7 +110,7 @@ extension PlacesTableViewController: UITableViewDataSource
     
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell
     {
-        let cell = tableView.dequeueReusableCellWithIdentifier(Constants.PlaceCell, forIndexPath: indexPath)
+        let cell = tableView.dequeueReusableCellWithIdentifier(Storyboards.PlaceCell, forIndexPath: indexPath)
         
         // Configure the cell...
         let place = pin!.places![indexPath.row]
@@ -122,7 +130,6 @@ extension PlacesTableViewController: UITableViewDataSource
     {
         if editingStyle == .Delete {
             // Delete the row from the data source
-            
             let place = pin!.places![indexPath.row]
             context.deleteObject(place)     // correct way
             CoreDataStackManager.sharedInstance.saveContext()
@@ -138,5 +145,5 @@ extension PlacesTableViewController: UITableViewDataSource
 
 extension PlacesTableViewController: UITableViewDelegate
 {
-
+    // ...
 }

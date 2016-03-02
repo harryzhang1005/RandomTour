@@ -17,7 +17,6 @@
 		FAC355181C46A7630056BB76 /* PhotosCollectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC355171C46A7630056BB76 /* PhotosCollectionViewController.swift */; };
 		FAC3551A1C46AE960056BB76 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FAC355191C46AE960056BB76 /* MapKit.framework */; };
 		FAC3551C1C46B56C0056BB76 /* PhotoCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3551B1C46B56C0056BB76 /* PhotoCollectionViewCell.swift */; };
-		FAC3551E1C46B8F80056BB76 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3551D1C46B8F80056BB76 /* Constants.swift */; };
 		FAC355201C46BA2E0056BB76 /* FlickrClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3551F1C46BA2E0056BB76 /* FlickrClient.swift */; };
 		FAC355221C46BA4C0056BB76 /* GooglePlacesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC355211C46BA4C0056BB76 /* GooglePlacesClient.swift */; };
 		FAC355261C46BC5F0056BB76 /* ErrorAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC355241C46BC5F0056BB76 /* ErrorAlert.swift */; };
@@ -48,7 +47,6 @@
 		FAC355171C46A7630056BB76 /* PhotosCollectionViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotosCollectionViewController.swift; sourceTree = "<group>"; };
 		FAC355191C46AE960056BB76 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
 		FAC3551B1C46B56C0056BB76 /* PhotoCollectionViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoCollectionViewCell.swift; sourceTree = "<group>"; };
-		FAC3551D1C46B8F80056BB76 /* Constants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		FAC3551F1C46BA2E0056BB76 /* FlickrClient.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FlickrClient.swift; sourceTree = "<group>"; };
 		FAC355211C46BA4C0056BB76 /* GooglePlacesClient.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GooglePlacesClient.swift; sourceTree = "<group>"; };
 		FAC355241C46BC5F0056BB76 /* ErrorAlert.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ErrorAlert.swift; sourceTree = "<group>"; };
@@ -122,7 +120,6 @@
 				FAC3552D1C46BE300056BB76 /* Pin+CoreDataProperties.swift */,
 				FAC3552E1C46BE300056BB76 /* Pin.swift */,
 				FAC355041C46A1410056BB76 /* RandomTour.xcdatamodeld */,
-				FAC3551D1C46B8F80056BB76 /* Constants.swift */,
 				FACD65E61C494254001E5A1E /* CoordinateRegion.swift */,
 			);
 			name = Model;
@@ -257,7 +254,6 @@
 				FAC355061C46A1410056BB76 /* RandomTour.xcdatamodeld in Sources */,
 				FAC3553B1C46E1090056BB76 /* Photo+CoreDataProperties.swift in Sources */,
 				FAC355181C46A7630056BB76 /* PhotosCollectionViewController.swift in Sources */,
-				FAC3551E1C46B8F80056BB76 /* Constants.swift in Sources */,
 				FAC355301C46BE300056BB76 /* Pin.swift in Sources */,
 				FAC355271C46BC5F0056BB76 /* Reachability.swift in Sources */,
 				FAC354FE1C46A1410056BB76 /* AppDelegate.swift in Sources */,

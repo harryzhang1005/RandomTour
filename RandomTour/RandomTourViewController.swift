@@ -17,8 +17,8 @@ class RandomTourViewController: UIViewController
     @IBOutlet weak var toolbar: UIToolbar!
     
     private let context = CoreDataStackManager.sharedInstance.managedObjectContext   // core data context
-    private var editingMode = false // pins can be deleted
-    private var isDragPinEnded = false  // the pin is dragable, this flag means drag ended ?
+    private var editingMode = false // pins can be deleted or not
+    private var isDragPinEnded = false  // the pin is dragable, this flag means drag is ended or not
     private var currentMapRegion: CoordinateRegion? // save map region when user want to change it
     private var selectedPin: Pin?   // current selected pin
     
@@ -111,6 +111,7 @@ class RandomTourViewController: UIViewController
         fetchPinRequest.entity = NSEntityDescription.entityForName("Pin", inManagedObjectContext: context)
         
         var pins = [Pin]()
+        
         do {
             pins = try context.executeFetchRequest(fetchPinRequest) as! [Pin]
         } catch let error as NSError {
@@ -118,9 +119,8 @@ class RandomTourViewController: UIViewController
         }
         
         // Step-2: Load pins to map view
-        for pin in pins {
-            randomTourMapView.addAnnotation(pin)
-            //randomTourMapView.showAnnotations([pin], animated: true)  // here no need
+        if pins.count > 0 {
+            randomTourMapView.addAnnotations(pins)
         }
     }
     
@@ -132,15 +132,6 @@ class RandomTourViewController: UIViewController
     }
     
     private func updatePin(pin: Pin) {
-        
-//        if var photosInPin = pin.photos {
-//            photosInPin.removeAll(keepCapacity: true)
-//            pin.photos = nil
-//        }
-//        if var placesInPin = pin.places {
-//            placesInPin.removeAll(keepCapacity: true)
-//            pin.places = nil
-//        }
         pin.photos = nil
         pin.places = nil
         CoreDataStackManager.sharedInstance.saveContext()
@@ -150,6 +141,7 @@ class RandomTourViewController: UIViewController
     @IBAction func editPins(sender: UIBarButtonItem) {
         editingMode = !editingMode
         toolbar.hidden = !editingMode
+        // editBarButtonItem style is custom
         editingMode ? (editBarButtonItem.title = "Done") : (editBarButtonItem.title = "Edit")
     }
 
@@ -160,10 +152,13 @@ class RandomTourViewController: UIViewController
         if sender.state != .Began { return }
         
         let pointPress = sender.locationInView(randomTourMapView)
+        
+        // Converts a point in the specified view’s coordinate system to a map coordinate.
         let mapLocation = randomTourMapView.convertPoint(pointPress, toCoordinateFromView: randomTourMapView)
         
         let annoPin = Pin(lati: mapLocation.latitude, long: mapLocation.longitude)
         CoreDataStackManager.sharedInstance.saveContext()    // Save pin to Core Data
+        
         getFlickrPhotos(annoPin)
         randomTourMapView.addAnnotation(annoPin)
         
@@ -176,6 +171,7 @@ class RandomTourViewController: UIViewController
     {
         if pin.isFetchingPhotos { return } else { pin.isFetchingPhotos = true }
         
+        // NOTE: sometimes can't fetch photos, should try it later or change pin
         FlickrClient.sharedInstance.getFlickrPhoto(withPin: pin) { result, error in
             if let error = error {
                 print(error)
@@ -184,6 +180,8 @@ class RandomTourViewController: UIViewController
                     for dict in dictArray {
                         let _ = Photo(imageURL: dict["imageURL"], imageName: dict["imageName"], pin: pin)
                     }
+                    
+                    // Back to main queue and save it
                     dispatch_async(dispatch_get_main_queue()) { CoreDataStackManager.sharedInstance.saveContext() }
                 }
             }
@@ -195,7 +193,7 @@ class RandomTourViewController: UIViewController
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?)
     {
-        if segue.identifier == Constants.PinSegue {
+        if segue.identifier == Storyboards.PinSegue {
             if let tourTBVC = segue.destinationViewController as? TourTabBarViewController {
                 if let pin = selectedPin {
                     tourTBVC.pin = pin
@@ -204,15 +202,20 @@ class RandomTourViewController: UIViewController
         }
     }
     
+    private struct Storyboards {
+        static let PinSegue = "PinSegue"                // Pin to show Tab bar vc
+        static let MapAnnoView = "MapAnnoView"          // MapView annotation view
+    }
+    
 }
 
 extension RandomTourViewController: MKMapViewDelegate {
     
     func mapView(mapView: MKMapView, viewForAnnotation annotation: MKAnnotation) -> MKAnnotationView?
     {
-        var annoView = mapView.dequeueReusableAnnotationViewWithIdentifier(Constants.MapAnnoView) as? MKPinAnnotationView
+        var annoView = mapView.dequeueReusableAnnotationViewWithIdentifier(Storyboards.MapAnnoView) as? MKPinAnnotationView
         if annoView == nil {
-            annoView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: Constants.MapAnnoView)
+            annoView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: Storyboards.MapAnnoView)
 //            annoView!.canShowCallout = true
 //            annoView?.userInteractionEnabled = true
 //            annoView?.pinTintColor = UIColor.redColor()
@@ -224,7 +227,7 @@ extension RandomTourViewController: MKMapViewDelegate {
         annoView?.draggable = true
         
         // immediately select this pin view (needs to be selected first to be dragged)
-        annoView?.setSelected(true, animated: false)
+        //annoView?.setSelected(true, animated: false)
         
         return annoView
     }
@@ -244,11 +247,12 @@ extension RandomTourViewController: MKMapViewDelegate {
             return
         }
         
-        if editingMode { // Tap Pins to delete
+        // Tap Pins to delete
+        if editingMode {
             deletePin(pin)
         } else {
             selectedPin = pin   // only this case select a pin and segue
-            self.performSegueWithIdentifier(Constants.PinSegue, sender: self)
+            self.performSegueWithIdentifier(Storyboards.PinSegue, sender: self)
         }
     }
     
@@ -262,6 +266,7 @@ extension RandomTourViewController: MKMapViewDelegate {
 //        // This case, mapView.region is before changing region
 //    }
     
+    // Drag a pin ended
     func mapView(mapView: MKMapView, annotationView view: MKAnnotationView, didChangeDragState newState: MKAnnotationViewDragState, fromOldState oldState: MKAnnotationViewDragState) {
         if newState == MKAnnotationViewDragState.Ending {
             isDragPinEnded = true
