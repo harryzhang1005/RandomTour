@@ -103,7 +103,7 @@ class RandomTourViewController: UIViewController
     
     // MARK: - Pin Handlers
     
-    // Read Core Data
+    // Read
     private func loadPins()
     {
         // Step-1: Read pins from Core Data
@@ -124,7 +124,7 @@ class RandomTourViewController: UIViewController
         }
     }
     
-    // Delete Core Data
+    // Delete
     private func deletePin(pin: Pin) {
         randomTourMapView.removeAnnotation(pin)
         context.deleteObject(pin)
@@ -132,7 +132,7 @@ class RandomTourViewController: UIViewController
     }
     
     private func updatePin(pin: Pin) {
-        pin.photos = nil
+        pin.photos = nil    // first, clean them up
         pin.places = nil
         CoreDataStackManager.sharedInstance.saveContext()
         getFlickrPhotos(pin)
@@ -156,7 +156,7 @@ class RandomTourViewController: UIViewController
         // Converts a point in the specified view’s coordinate system to a map coordinate.
         let mapLocation = randomTourMapView.convertPoint(pointPress, toCoordinateFromView: randomTourMapView)
         
-        let annoPin = Pin(lati: mapLocation.latitude, long: mapLocation.longitude)
+        let annoPin = Pin(latitude: mapLocation.latitude, longitude: mapLocation.longitude, insertIntoManagedObjectContext: self.context)
         CoreDataStackManager.sharedInstance.saveContext()    // Save pin to Core Data
         
         getFlickrPhotos(annoPin)
@@ -178,7 +178,8 @@ class RandomTourViewController: UIViewController
             } else {
                 if let dictArray = result { // result is [[String:String]]
                     for dict in dictArray {
-                        let _ = Photo(imageURL: dict["imageURL"], imageName: dict["imageName"], pin: pin)
+                        let _ = Photo(imageURL: dict["imageURL"], imageName: dict["imageName"], pin: pin, insertIntoManagedObjectContext: self.context)
+                        
                     }
                     
                     // Back to main queue and save it
@@ -207,7 +208,7 @@ class RandomTourViewController: UIViewController
         static let MapAnnoView = "MapAnnoView"          // MapView annotation view
     }
     
-}
+}//EndClass
 
 extension RandomTourViewController: MKMapViewDelegate {
     

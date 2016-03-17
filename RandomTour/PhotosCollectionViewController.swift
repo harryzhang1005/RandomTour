@@ -8,42 +8,17 @@
 
 import UIKit
 import MapKit
-import CoreData     // not really using
 
 class PhotosCollectionViewController: UIViewController
 {
-    @IBOutlet weak var photosCollectionView: UICollectionView!
     @IBOutlet weak var miniMapView: MKMapView!
+    @IBOutlet weak var photosCollectionView: UICollectionView!
     @IBOutlet weak var photosButton: UIButton!
     @IBOutlet weak var spinnerMain: UIActivityIndicatorView!
     
     private let context = CoreDataStackManager.sharedInstance.managedObjectContext
     private var selectedIndexPaths = [NSIndexPath]()    // or just use photosCollectionView.indexPathsForSelectedItems()
     private var pin: Pin?   // Model
-    
-    //// not using start ////
-    lazy var fetchedResultsController: NSFetchedResultsController = {
-        
-        let fetchRequest = NSFetchRequest(entityName: "Photo")
-        fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pin!)
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "imageName", ascending: true)]
-        
-        let fetchController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: self.context, sectionNameKeyPath: nil, cacheName: nil)
-        
-        return fetchController
-    }()
-    
-    private func setupFetchedResultsController()
-    {
-        fetchedResultsController.delegate = self
-        
-        do {
-            try fetchedResultsController.performFetch()
-        } catch let error as NSError {
-            print("\(error)")
-        }
-    }
-    //// not using end ////
     
     // MARK: - VC Life Cycle
     
@@ -59,6 +34,7 @@ class PhotosCollectionViewController: UIViewController
         }
         
         setupMiniMapView()
+        
         getFlickrPhotos()
     }
     
@@ -66,7 +42,7 @@ class PhotosCollectionViewController: UIViewController
         super.viewWillAppear(animated)
         
         // tabBarController : The nearest ancestor in the view controller hierarchy that is a tab bar controller. (read-only)
-        tabBarController?.title = "Photos"  // works
+        tabBarController?.title = "Photos"
         
         if let pin = pin {
             let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
@@ -76,14 +52,24 @@ class PhotosCollectionViewController: UIViewController
         }
         
         // here need check photos button state
-        togglePhotosButtonState()
+        toggleNewPhotosButtonState()
     }
+    
+    // MARK: - Layout UI
     
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
         
+        setupPhotosCollectionViewLayout()
+    }
+    
+    private func setupPhotosCollectionViewLayout() {
         let flowLayout = UICollectionViewFlowLayout()
-            // The margins used to lay out content in a section. The default edge insets are all set to 0.
+        // The margins used to lay out content in a section. The default edge insets are all set to 0.
         flowLayout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         flowLayout.minimumInteritemSpacing = CollectionViewLayoutConstants.MinimumItemSpacing
         flowLayout.minimumLineSpacing = CollectionViewLayoutConstants.MinimumItemSpacing
@@ -99,12 +85,138 @@ class PhotosCollectionViewController: UIViewController
     override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransitionToSize(size, withTransitionCoordinator: coordinator)
         
-        //view.layoutSubviews()   // trigger viewWillLayoutSubviews, but You should not call this method directly. If you want to force a layout update, call the setNeedsLayout method instead to do so prior to the next drawing update. If you want to update the layout of your views immediately, call the layoutIfNeeded method. The system will trigger viewDidLayoutSubviews automatically when the device orientation has been changed.
+        self.photosCollectionView.setNeedsLayout()
+        // view.layoutSubviews() trigger viewWillLayoutSubviews, but You should not call this method directly. If you want to force a layout update, call the setNeedsLayout method instead to do so prior to the next drawing update. If you want to update the layout of your views immediately, call the layoutIfNeeded method.
     }
+    
+    // MARK: - Handle Photo Download
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
+        self.cancelAllOperations()
+    }
+    
+    // You should use NSOperation to maintain a list of threads in one queue and its so easy syntactically.
+    private var downloadsInProgress = [NSIndexPath : NSOperation]()
+    lazy var downloadsQueue: NSOperationQueue = {
+        var queue = NSOperationQueue()
+        queue.name = "Photos Download Queue"
+        return queue
+    }()
+    
+    private func addPhotoDownloadOperation(forPhoto photo: Photo) {
+        // Check the indexPath is existing or not
+        let indexPath = photo.indexPath!
+        guard downloadsInProgress[indexPath] == nil else { return }
+        
+        // Create a new photo download operation
+        let downloadOp = PhotoDownloader(photoRecord: photo.photoRecord!)
+        
+        downloadOp.completionBlock = {
+            if downloadOp.cancelled { return }
+            
+            dispatch_async(GCDQueues.GlobalMainQueue) { // update UI
+                self.downloadsInProgress.removeValueForKey(indexPath)
+                //self.collectionView.reloadItemsAtIndexPaths([indexPath])  // !!!: very bad response
+                
+                let visibleCells = self.photosCollectionView.visibleCells() as! [PhotoCollectionViewCell]
+                for cell in visibleCells {
+                    if indexPath == self.photosCollectionView.indexPathForCell(cell) {
+                        cell.backgroundView = UIImageView(image: photo.image)
+                        cell.spinner.stopAnimating()
+                        photo.didFetchImageData = true
+                        break
+                    }
+                }
+            }
+        }
+        
+        // Add the photo download operation to the queue
+        self.downloadsInProgress[indexPath] = downloadOp
+        self.downloadsQueue.addOperation(downloadOp)
+    }
+    
+    // MARK: - UIScrollViewDelegate methods
+    
+    func scrollViewWillBeginDragging(scrollView: UIScrollView) {
+        self.suspendAllOperations()             // suspend all photo download operations
+    }
+    func scrollViewDidEndDragging(scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if !decelerate {
+            handleOperationsForOnscreenCells()  // handle operations for on-screen cells
+            self.resumeAllOperations()          // resume all photo download operations
+        }
+    }
+    func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
+        handleOperationsForOnscreenCells()  // handle operations for on-screen cells
+        self.resumeAllOperations()          // resume all photo download operations
+    }
+    
+    // MARK: - Private helpers
+    
+    // The off-screen cells should stop download operations
+    private func handleOperationsForOnscreenCells()
+    {
+        // 1 Get all the currently visible items in the collection view to an array containing index paths
+        let indexPathsOnscreenCells = self.photosCollectionView.indexPathsForVisibleItems()  // [NSIndexPath]
+        
+        // 2 Construct a set of all pending operations in the download operations in progress, indexPaths in the set
+        let allPendingOperations = NSMutableSet(array: Array(downloadsInProgress.keys)) // key is indexPath
+        print("current all pending operations count: \(allPendingOperations.count)")   // Sometimes 0 ? maybe timing reason
+        
+        // 3 Note: here using mutableCopy
+        let toBeCancelledSet = allPendingOperations.mutableCopy() as! NSMutableSet
+        let visibleCellSet = NSSet(array: indexPathsOnscreenCells)
+        toBeCancelledSet.minusSet(visibleCellSet as Set<NSObject>)  // get the final to be cancelled operations set
+        
+        // 4 Construct a set of index paths that need their operations started. Start with index paths all visible rows, and then remove the ones where operations are already pending.
+        let toBeStarted = visibleCellSet.mutableCopy() as! NSMutableSet
+        //toBeStarted.minusSet((allPendingOperations as NSSet) as Set<NSObject>)
+        toBeStarted.minusSet(allPendingOperations as Set<NSObject>)   // !!!: Here is key point
+        
+        // 5 cancel all off-screens operations
+        for indexPath in toBeCancelledSet      // Can NOT use (a in b)
+        {
+            let indexPath = indexPath as! NSIndexPath
+            
+            if let pendingDownloadOp = downloadsInProgress[indexPath] {
+                pendingDownloadOp.cancel()
+            }
+            downloadsInProgress.removeValueForKey(indexPath)  // put here more safety
+        }
+        
+        // 6 start all on-screen operations
+        for indexPath in toBeStarted
+        {
+            let indexPath = indexPath as! NSIndexPath
+            let photo = photoAtIndexPath(indexPath: indexPath)
+            
+            if let photoRecord = photo.photoRecord where photoRecord.state == PhotoRecordState.New {
+                addPhotoDownloadOperation(forPhoto: photo)
+            }
+        }
+    }
+    
+    private func cancelAllOperations() {
+        downloadsQueue.cancelAllOperations()
+    }
+    private func resumeAllOperations() {
+        downloadsQueue.suspended = false
+    }
+    private func suspendAllOperations() {
+        downloadsQueue.suspended = true
+    }
+    
+    private func photoAtIndexPath(indexPath indexPath: NSIndexPath) -> Photo {
+        let photo = pin!.photos![indexPath.row]
+        photo.indexPath = indexPath
+        if photo.photoRecord == nil {
+            if let remotePath = photo.imageURL {
+                photo.photoRecord = PhotoRecord(url: NSURL(string: remotePath)!)
+            }
+        }
+        return photo
     }
     
     // fetch new photos or delete selected photos
@@ -119,8 +231,6 @@ class PhotosCollectionViewController: UIViewController
             getFlickrPhotos()
         }
     }
-    
-    // MARK: - Private Helpers
     
     private func isLandscapeOrientation() -> Bool {
         return UIInterfaceOrientationIsLandscape(UIApplication.sharedApplication().statusBarOrientation)
@@ -162,8 +272,8 @@ class PhotosCollectionViewController: UIViewController
                         print(error)
                     } else {
                         if let dictArray = result {
-                            for retPhoto in dictArray {
-                                let _ = Photo(imageURL: retPhoto["imageURL"], imageName: retPhoto["imageName"], pin: pin)
+                            for aPhoto in dictArray {
+                                let _ = Photo(imageURL: aPhoto["imageURL"], imageName: aPhoto["imageName"], pin: pin, insertIntoManagedObjectContext: self.context)
                             }
                             
                             dispatch_async(dispatch_get_main_queue()) {
@@ -184,15 +294,6 @@ class PhotosCollectionViewController: UIViewController
             pin.photos = nil
             CoreDataStackManager.sharedInstance.saveContext()
         }
-
-        // another way - using fetchedResultsController
-//        if let fetchedObjects = fetchedResultsController.fetchedObjects {
-//            for obj in fetchedObjects {
-//                let photo = obj as! Photo
-//                context.deleteObject(photo)
-//            }
-//            CoreDataStackManager.sharedInstance.saveContext()
-//        }
     }
     
     private func updatePhotoButtonTitle() {
@@ -203,7 +304,7 @@ class PhotosCollectionViewController: UIViewController
         }
     }
     
-    private func togglePhotosButtonState() {
+    private func toggleNewPhotosButtonState() {
         if photosButton.currentTitle == "New Photos" {
             if pin!.isFetchingPhotos {
                 photosButton.enabled = false
@@ -222,12 +323,12 @@ class PhotosCollectionViewController: UIViewController
             for indexPath in selectedIndexPaths
             {
                 let photo = pin!.photos![indexPath.row]
-                context.deleteObject(photo) // Here is correct way to delete a photo
+                context.deleteObject(photo) // Here is correct way to delete a photo from core data
             }
-            CoreDataStackManager.sharedInstance.saveContext()
+            CoreDataStackManager.sharedInstance.saveContext()   // save once for better performance
             
             photosCollectionView.deleteItemsAtIndexPaths(selectedIndexPaths)
-                // Animates multiple insert, delete, reload, and move operations as a group.
+                                    // Animates multiple insert, delete, reload, and move operations as a group.
             photosCollectionView.performBatchUpdates(nil, completion: nil)
             selectedIndexPaths.removeAll() // clean up
         }
@@ -243,7 +344,7 @@ class PhotosCollectionViewController: UIViewController
         static let MinimumItemSpacing: CGFloat = 8
     }
 
-}
+}//EndClass
 
 // MARK: - UICollectionViewDataSource
 
@@ -254,10 +355,6 @@ extension PhotosCollectionViewController: UICollectionViewDataSource
     }
     
     func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        
-        //let sectionInfo = self.fetchedResultsController.sections![section]
-        //return sectionInfo.numberOfObjects
-        
         return pin!.photos!.count
     }
     
@@ -266,8 +363,13 @@ extension PhotosCollectionViewController: UICollectionViewDataSource
         let cell = collectionView.dequeueReusableCellWithReuseIdentifier(Storyboards.PhotoCell, forIndexPath: indexPath) as! PhotoCollectionViewCell
         
         // Configure the cell
-        let photo = pin!.photos![indexPath.row]
-        cell.configCell(photo)
+        let photo = photoAtIndexPath(indexPath: indexPath)
+        if let photoRecord = photo.photoRecord where photoRecord.state == PhotoRecordState.New {
+            if !self.photosCollectionView.dragging && !self.photosCollectionView.decelerating {
+                addPhotoDownloadOperation(forPhoto: photo)
+            }
+        }
+        cell.photo = photo
         
         return cell
     }
@@ -321,19 +423,11 @@ extension PhotosCollectionViewController: UICollectionViewDelegate
     
 }
 
-// MARK: - NSFetchedResultsControllerDelegate methods
-
-extension PhotosCollectionViewController: NSFetchedResultsControllerDelegate
-{
-    func controllerWillChangeContent(controller: NSFetchedResultsController) {
-        // x
-    }
-    
-    func controller(controller: NSFetchedResultsController, didChangeObject anObject: AnyObject, atIndexPath indexPath: NSIndexPath?, forChangeType type: NSFetchedResultsChangeType, newIndexPath: NSIndexPath?) {
-        // x
-    }
-    
-    func controllerDidChangeContent(controller: NSFetchedResultsController) {
-        // x
+extension Photo {
+    var image: UIImage? {
+        if self.photoRecord?.state == PhotoRecordState.Downloaded {
+            return self.photoRecord?.image  // image comes online or offline (local file)
+        }
+        return UIImage.defaultImage
     }
 }

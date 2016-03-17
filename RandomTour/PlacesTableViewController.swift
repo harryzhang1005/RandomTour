@@ -77,7 +77,7 @@ class PlacesTableViewController: UIViewController
                     } else {
                         if let dictArray = result {
                             for placeProps in dictArray {
-                                let _ = Place(placeName: placeProps["name"], vicinity: placeProps["vicinity"], pin: pin)
+                                let _ = Place(placeName: placeProps["name"], vicinity: placeProps["vicinity"], pin: pin, insertIntoManagedObjectContext: self.context)
                             }
                             dispatch_async(dispatch_get_main_queue()) {
                                 CoreDataStackManager.sharedInstance.saveContext()    // Save Photos to Core Data
@@ -94,7 +94,7 @@ class PlacesTableViewController: UIViewController
         static let PlaceCell = "PlaceCell"              // Table view cell
     }
 
-}
+}//EndClass
 
 // MARK: - Table view data source
 
@@ -130,15 +130,19 @@ extension PlacesTableViewController: UITableViewDataSource
     {
         if editingStyle == .Delete {
             // Delete the row from the data source
-            let place = pin!.places![indexPath.row]
-            context.deleteObject(place)     // correct way
-            CoreDataStackManager.sharedInstance.saveContext()
+            deletePlace(atIndexPath: indexPath)
             
             tableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
         }
         else if editingStyle == .Insert {
             // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
         }
+    }
+    
+    private func deletePlace(atIndexPath indexPath: NSIndexPath) {
+        let place = pin!.places![indexPath.row]
+        context.deleteObject(place)     // correct way
+        CoreDataStackManager.sharedInstance.saveContext()
     }
     
 }

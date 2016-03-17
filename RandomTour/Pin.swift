@@ -18,14 +18,12 @@ class Pin: NSManagedObject {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
     }
 
-    // Create Core Data
-    init(lati: Double, long: Double) {
-        let context = CoreDataStackManager.sharedInstance.managedObjectContext
-        let entityDesc = NSEntityDescription.entityForName("Pin", inManagedObjectContext: context)
-        super.init(entity: entityDesc!, insertIntoManagedObjectContext: context)
+    init(latitude: Double, longitude: Double, insertIntoManagedObjectContext context: NSManagedObjectContext) {
+        let aEntity = NSEntityDescription.entityForName("Pin", inManagedObjectContext: context)
+        super.init(entity: aEntity!, insertIntoManagedObjectContext: context)
         
-        self.latitude = lati
-        self.longitude = long
+        self.latitude = latitude
+        self.longitude = longitude
         self.isFetchingPhotos = false
     }
     

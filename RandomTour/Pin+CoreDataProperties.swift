@@ -17,7 +17,7 @@ extension Pin {
     @NSManaged var latitude: Double         // The pin's latitude
     @NSManaged var longitude: Double        // The pin's longitude
     @NSManaged var isFetchingPhotos: Bool   // is there fetching photos for the pin ?
-    @NSManaged var photos: [Photo]?    // [Photo] or NSOrderedSet?, how many photos belong to this pin ?
-    @NSManaged var places: [Place]?    // [Place] or NSOrderedSet?, how many places belong to this pin ?
+    @NSManaged var photos: [Photo]?         // [Photo] or NSOrderedSet?, how many photos belong to this pin ?
+    @NSManaged var places: [Place]?         // [Place] or NSOrderedSet?, how many places belong to this pin ?
 
 }

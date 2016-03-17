@@ -24,7 +24,7 @@ class CoreDataStackManager: NSObject
         let urls = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)
         // Note: debug is case sensitive
         #if DEBUG
-        print("url path: \(urls.first!.path)")  // urls.count is 1 on iOS simulator
+            //print("url path: \(urls.first!.path)")  // urls.count is 1 on iOS simulator
         #endif
         return urls[urls.count-1]
     }()
@@ -49,8 +49,7 @@ class CoreDataStackManager: NSObject
             var dict = [String: AnyObject]()
             dict[NSLocalizedDescriptionKey] = "Failed to initialize the application's saved data"
             dict[NSLocalizedFailureReasonErrorKey] = failureReason
-            
-            dict[NSUnderlyingErrorKey] = error as NSError
+            //dict[NSUnderlyingErrorKey] = error as NSError
             let wrappedError = NSError(domain: "YOUR_ERROR_DOMAIN", code: 9999, userInfo: dict)
             // Replace this with code to handle the error appropriately.
             // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.

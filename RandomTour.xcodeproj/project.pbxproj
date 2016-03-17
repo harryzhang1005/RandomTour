@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FA8822341C9A1B0F0078AF03 /* PhotoDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8822331C9A1B0F0078AF03 /* PhotoDownloader.swift */; };
+		FA8822361C9A1F840078AF03 /* GCDQueues.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8822351C9A1F840078AF03 /* GCDQueues.swift */; };
 		FAC354FE1C46A1410056BB76 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC354FD1C46A1410056BB76 /* AppDelegate.swift */; };
 		FAC355001C46A1410056BB76 /* RandomTourViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC354FF1C46A1410056BB76 /* RandomTourViewController.swift */; };
 		FAC355031C46A1410056BB76 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FAC355011C46A1410056BB76 /* Main.storyboard */; };
@@ -35,6 +37,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		FA8822331C9A1B0F0078AF03 /* PhotoDownloader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoDownloader.swift; sourceTree = "<group>"; };
+		FA8822351C9A1F840078AF03 /* GCDQueues.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GCDQueues.swift; sourceTree = "<group>"; };
 		FAC354FA1C46A1410056BB76 /* RandomTour.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RandomTour.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC354FD1C46A1410056BB76 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		FAC354FF1C46A1410056BB76 /* RandomTourViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomTourViewController.swift; sourceTree = "<group>"; };
@@ -98,12 +102,13 @@
 			isa = PBXGroup;
 			children = (
 				FAC355231C46BC490056BB76 /* Common */,
+				FACD65E81C4A04F7001E5A1E /* ClientAPIs */,
 				FAC355141C46A6D30056BB76 /* Controller */,
 				FAC355131C46A6CE0056BB76 /* View */,
 				FAC355121C46A6C80056BB76 /* Model */,
-				FAC354FD1C46A1410056BB76 /* AppDelegate.swift */,
 				FAC355071C46A1410056BB76 /* Assets.xcassets */,
 				FAC355091C46A1410056BB76 /* LaunchScreen.storyboard */,
+				FAC354FD1C46A1410056BB76 /* AppDelegate.swift */,
 				FAC3550C1C46A1410056BB76 /* Info.plist */,
 			);
 			path = RandomTour;
@@ -112,7 +117,6 @@
 		FAC355121C46A6C80056BB76 /* Model */ = {
 			isa = PBXGroup;
 			children = (
-				FACD65E81C4A04F7001E5A1E /* ClientAPIs */,
 				FAC355371C46E1090056BB76 /* Photo+CoreDataProperties.swift */,
 				FAC355381C46E1090056BB76 /* Photo.swift */,
 				FAC355391C46E1090056BB76 /* Place+CoreDataProperties.swift */,
@@ -121,6 +125,7 @@
 				FAC3552E1C46BE300056BB76 /* Pin.swift */,
 				FAC355041C46A1410056BB76 /* RandomTour.xcdatamodeld */,
 				FACD65E61C494254001E5A1E /* CoordinateRegion.swift */,
+				FA8822331C9A1B0F0078AF03 /* PhotoDownloader.swift */,
 			);
 			name = Model;
 			sourceTree = "<group>";
@@ -148,6 +153,7 @@
 		FAC355231C46BC490056BB76 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				FA8822351C9A1F840078AF03 /* GCDQueues.swift */,
 				FAC355241C46BC5F0056BB76 /* ErrorAlert.swift */,
 				FAC3552A1C46BCC00056BB76 /* HttpRequestAPI.swift */,
 				FAC355251C46BC5F0056BB76 /* Reachability.swift */,
@@ -252,10 +258,12 @@
 				FAC355221C46BA4C0056BB76 /* GooglePlacesClient.swift in Sources */,
 				FAC355161C46A7350056BB76 /* PlacesTableViewController.swift in Sources */,
 				FAC355061C46A1410056BB76 /* RandomTour.xcdatamodeld in Sources */,
+				FA8822361C9A1F840078AF03 /* GCDQueues.swift in Sources */,
 				FAC3553B1C46E1090056BB76 /* Photo+CoreDataProperties.swift in Sources */,
 				FAC355181C46A7630056BB76 /* PhotosCollectionViewController.swift in Sources */,
 				FAC355301C46BE300056BB76 /* Pin.swift in Sources */,
 				FAC355271C46BC5F0056BB76 /* Reachability.swift in Sources */,
+				FA8822341C9A1B0F0078AF03 /* PhotoDownloader.swift in Sources */,
 				FAC354FE1C46A1410056BB76 /* AppDelegate.swift in Sources */,
 				FAC3553E1C46E1090056BB76 /* Place.swift in Sources */,
 				FACD65E71C494254001E5A1E /* CoordinateRegion.swift in Sources */,

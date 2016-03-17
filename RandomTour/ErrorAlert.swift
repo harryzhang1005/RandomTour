@@ -29,6 +29,5 @@ class ErrorAlert {
         if viewController.presentedViewController == nil {
             viewController.presentViewController(alert, animated: true, completion: nil)
         }
-    }//create
-
+    }
 }

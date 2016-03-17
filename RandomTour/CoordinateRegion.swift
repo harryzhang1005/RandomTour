@@ -17,8 +17,9 @@ class CoordinateRegion: NSObject, NSCoding
         mapRegion = region
     }
     
+    // Note: Designated initializer can't be declared in an extension of 'CoordinateRegion';
     // Iniitializer requirement 'init(coder:)' can only be satified by a 'required' in the definition of non-final class 'CoordinateRegion'
-    required init?(coder aDecoder: NSCoder) {
+    required init?(coder aDecoder: NSCoder) { // NS_DESIGNATED_INITIALIZER
         let centerLatitude = aDecoder.decodeDoubleForKey(Constants.RegionCenterLatitude)
         let centerLongitude = aDecoder.decodeDoubleForKey(Constants.RegionCenterLongitude)
         let spanLatitudeDelta = aDecoder.decodeDoubleForKey(Constants.RegionSpanLatitudeDelta)
@@ -44,19 +45,3 @@ class CoordinateRegion: NSObject, NSCoding
     }
 
 }
-
-//extension CoordinateRegion: NSCoding {
-//    //func encodeWithCoder(aCoder: NSCoder)
-//    //init?(coder aDecoder: NSCoder) // NS_DESIGNATED_INITIALIZER
-//    
-//    // Designated initializer can't be declared in an extension of 'CoordinateRegion'; did you mean this to be a convenience initializer?
-//    init?(coder aDecoder: NSCoder) {
-//        <#code#>
-//    }
-//    
-//    // Iniitializer requirement 'init(coder:)' can only be satified by a 'required' in the definition of non-final class 'CoordinateRegion'
-//    
-//    func encodeWithCoder(aCoder: NSCoder) {
-//        <#code#>
-//    }
-//}

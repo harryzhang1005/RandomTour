@@ -18,11 +18,10 @@ class Place: NSManagedObject {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
     }
     
-    init(placeName: String?, vicinity: String?, pin: Pin?)
+    init(placeName: String?, vicinity: String?, pin: Pin?, insertIntoManagedObjectContext context: NSManagedObjectContext)
     {
-        let context = CoreDataStackManager.sharedInstance.managedObjectContext
-        let entityDesc = NSEntityDescription.entityForName("Place", inManagedObjectContext: context)
-        super.init(entity: entityDesc!, insertIntoManagedObjectContext: context)
+        let aEntity = NSEntityDescription.entityForName("Place", inManagedObjectContext: context)
+        super.init(entity: aEntity!, insertIntoManagedObjectContext: context)
         
         self.name = placeName
         self.vicinity = vicinity

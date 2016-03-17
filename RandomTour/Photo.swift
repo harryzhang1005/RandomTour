@@ -18,11 +18,10 @@ class Photo: NSManagedObject {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
     }
     
-    init(imageURL: String?, imageName: String?, pin: Pin?)
+    init(imageURL: String?, imageName: String?, pin: Pin?, insertIntoManagedObjectContext context: NSManagedObjectContext)
     {
-        let context = CoreDataStackManager.sharedInstance.managedObjectContext
-        let entityDesc = NSEntityDescription.entityForName("Photo", inManagedObjectContext: context)
-        super.init(entity: entityDesc!, insertIntoManagedObjectContext: context)
+        let aEntity = NSEntityDescription.entityForName("Photo", inManagedObjectContext: context)
+        super.init(entity: aEntity!, insertIntoManagedObjectContext: context)
         
         self.imageURL = imageURL
         self.imageName = imageName
@@ -30,4 +29,6 @@ class Photo: NSManagedObject {
         self.didFetchImageData = false
     }
     
+    var photoRecord: PhotoRecord?
+    var indexPath: NSIndexPath?
 }
