@@ -1,6 +1,9 @@
 //
 //  PhotoDownloader.swift
 //
+//  Created by Harvey Zhang on 1/15/16.
+//  Copyright © 2016 HappyGuy. All rights reserved.
+//
 
 import UIKit
 
