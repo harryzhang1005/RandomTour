@@ -20,40 +20,35 @@ class PlacesTableViewController: UIViewController
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
         
-        setupMiniMapView()
-        
+        tabBarController?.title = "Places"
         placesTableView.dataSource = self
         placesTableView.delegate = self
-        
         spinner.hidesWhenStopped = true
         
         if let pin = (tabBarController as? TourTabBarViewController)?.pin {
             self.pin = pin
-            getGooglePlaces()
         }
+        
+        setupMiniMapView()
+        getGooglePlaces()
     }
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
+    }
+    
+    // MARK: - Privates
+
+    private func setupMiniMapView()
+    {
+        miniMapView.userInteractionEnabled = false
         
-        tabBarController?.title = "Places"
-        
-        if let pin = pin {
+        if let pin = self.pin {
             let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
             miniMapView.setRegion(mapRegion, animated: false)
             miniMapView.addAnnotation(pin)
         }
-    }
-
-    private func setupMiniMapView()
-    {
-        //miniMapView.delegate = self
-        //miniMapView.mapType = MKMapType.Standard
-        miniMapView.userInteractionEnabled = false
     }
     
     private func getGooglePlaces()
@@ -161,7 +156,6 @@ extension PlacesTableViewController: UITableViewDataSource
     
 }
 
-extension PlacesTableViewController: UITableViewDelegate
-{
+extension PlacesTableViewController: UITableViewDelegate {
     //...
 }

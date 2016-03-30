@@ -26,7 +26,9 @@ class PhotosCollectionViewController: UIViewController
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        setupMiniMapView()
+        // tabBarController : The nearest ancestor in the view controller hierarchy that is a tab bar controller. (read-only)
+        tabBarController?.title = "Photos"
+        
         setupPhotosCollectionView()
         
         spinnerMain.hidesWhenStopped = true
@@ -34,8 +36,9 @@ class PhotosCollectionViewController: UIViewController
         // Get our model
         if let pin = (tabBarController as? TourTabBarViewController)?.pin {
             self.pin = pin
-            fetchFlickrPhotosInfos()
         }
+        setupMiniMapView()
+        fetchFlickrPhotosInfos()
         
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(PhotosCollectionViewController.updateUI),
                                                          name: Notifications.FetchPhotosDone, object: nil)
@@ -47,16 +50,6 @@ class PhotosCollectionViewController: UIViewController
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
-        
-        // tabBarController : The nearest ancestor in the view controller hierarchy that is a tab bar controller. (read-only)
-        tabBarController?.title = "Photos"
-        
-        if let pin = pin {
-            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
-            miniMapView.setRegion(mapRegion, animated: true)
-            miniMapView.addAnnotation(pin)
-            //miniMapView.showAnnotations([pin], animated: true) // already set map region, so no need this guy anymore
-        }
         
         // here need check photos button state
         setNewPhotosButtonState()
@@ -72,9 +65,14 @@ class PhotosCollectionViewController: UIViewController
     
     private func setupMiniMapView()
     {
-        //miniMapView.delegate = self
-        //miniMapView.mapType = MKMapType.Standard
         miniMapView.userInteractionEnabled = false
+        
+        if let pin = pin {
+            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
+            miniMapView.setRegion(mapRegion, animated: true)
+            miniMapView.addAnnotation(pin)
+            //miniMapView.showAnnotations([pin], animated: true) // already set map region, so no need this guy anymore
+        }
     }
     
     func updateUI() {
