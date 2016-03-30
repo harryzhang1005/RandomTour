@@ -36,6 +36,12 @@ class PlacesTableViewController: UIViewController
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
+        
+        if let pin = self.pin {
+            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
+            miniMapView.setRegion(mapRegion, animated: false)
+            miniMapView.addAnnotation(pin)
+        }
     }
     
     // MARK: - Privates
@@ -43,12 +49,6 @@ class PlacesTableViewController: UIViewController
     private func setupMiniMapView()
     {
         miniMapView.userInteractionEnabled = false
-        
-        if let pin = self.pin {
-            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
-            miniMapView.setRegion(mapRegion, animated: false)
-            miniMapView.addAnnotation(pin)
-        }
     }
     
     private func getGooglePlaces()

@@ -48,6 +48,7 @@ class RandomTourViewController: UIViewController
         
         loadPins()
         selectedPin = nil
+        setEditBarButtonItemState()
     }
     
     deinit {
@@ -68,6 +69,14 @@ class RandomTourViewController: UIViewController
         editingMode = !editingMode
         toolbar.hidden = !editingMode
         editBarButtonItem.title = editingMode ? "Done" : "Edit" // Here need set editBarButtonItem style to custom
+        
+        setEditBarButtonItemState()
+    }
+    
+    private func setEditBarButtonItemState() {
+        if !editingMode {
+            editBarButtonItem.enabled = randomTourMapView.annotations.count > 0 ? true : false
+        }
     }
     
     // MARK: - Map Region Handlers
@@ -161,6 +170,8 @@ class RandomTourViewController: UIViewController
         fetchFlickrPhotosInfosWithPin(annoPin)
         
         randomTourMapView.addAnnotation(annoPin)
+        
+        setEditBarButtonItemState()
     }
     
     // Pre-fetch Flickr photos infos, but not really image files

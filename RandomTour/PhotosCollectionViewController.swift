@@ -51,6 +51,13 @@ class PhotosCollectionViewController: UIViewController
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
         
+        if let pin = pin {
+            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
+            miniMapView.setRegion(mapRegion, animated: true)
+            miniMapView.addAnnotation(pin)
+            //miniMapView.showAnnotations([pin], animated: true) // already set map region, so no need this guy anymore
+        }
+        
         // here need check photos button state
         setNewPhotosButtonState()
     }
@@ -66,13 +73,6 @@ class PhotosCollectionViewController: UIViewController
     private func setupMiniMapView()
     {
         miniMapView.userInteractionEnabled = false
-        
-        if let pin = pin {
-            let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
-            miniMapView.setRegion(mapRegion, animated: true)
-            miniMapView.addAnnotation(pin)
-            //miniMapView.showAnnotations([pin], animated: true) // already set map region, so no need this guy anymore
-        }
     }
     
     func updateUI() {
