@@ -11,31 +11,38 @@ import MapKit
 
 class PhotosCollectionViewController: UIViewController
 {
-    @IBOutlet weak var miniMapView: MKMapView!
-    @IBOutlet weak var photosCollectionView: UICollectionView!
-    @IBOutlet weak var photosButton: UIButton!
-    @IBOutlet weak var spinnerMain: UIActivityIndicatorView!
+    @IBOutlet weak var miniMapView: MKMapView!                  // Show selected pin on the map
+    @IBOutlet weak var photosCollectionView: UICollectionView!  // Show fetched photos
+    @IBOutlet weak var photosButton: UIButton!                  // Fetch more photos
+    @IBOutlet weak var spinnerMain: UIActivityIndicatorView!    // Fetching photos infos
     
     private let context = CoreDataStackManager.sharedInstance.managedObjectContext
-    private var selectedIndexPaths = [NSIndexPath]()    // or just use photosCollectionView.indexPathsForSelectedItems()
-    private var pin: Pin?   // Model
+    private var selectedIndexPaths = [NSIndexPath]() // or use photosCollectionView.indexPathsForSelectedItems()
+    private var blurView: UIVisualEffectView!   // Add blur view when fetching photos infos
+    private var pin: Pin?   // Model, the current selected pin on the map
     
     // MARK: - VC Life Cycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        setupMiniMapView()
         setupPhotosCollectionView()
         
         spinnerMain.hidesWhenStopped = true
         
+        // Get our model
         if let pin = (tabBarController as? TourTabBarViewController)?.pin {
             self.pin = pin
+            fetchFlickrPhotosInfos()
         }
         
-        setupMiniMapView()
-        
-        getFlickrPhotos()
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(PhotosCollectionViewController.updateUI),
+                                                         name: Notifications.FetchPhotosDone, object: nil)
+    }
+    
+    deinit {
+        NSNotificationCenter.defaultCenter().removeObserver(self, name: Notifications.FetchPhotosDone, object: nil)
     }
     
     override func viewWillAppear(animated: Bool) {
@@ -48,44 +55,69 @@ class PhotosCollectionViewController: UIViewController
             let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
             miniMapView.setRegion(mapRegion, animated: true)
             miniMapView.addAnnotation(pin)
-            //miniMapView.showAnnotations([pin], animated: true)
+            //miniMapView.showAnnotations([pin], animated: true) // already set map region, so no need this guy anymore
         }
         
         // here need check photos button state
-        toggleNewPhotosButtonState()
+        setNewPhotosButtonState()
+    }
+    
+    private func setupPhotosCollectionView()
+    {
+        photosCollectionView.dataSource = self
+        photosCollectionView.delegate = self
+        photosCollectionView.allowsMultipleSelection = true // default is false
+        setupPhotosCollectionViewLayout()
+    }
+    
+    private func setupMiniMapView()
+    {
+        //miniMapView.delegate = self
+        //miniMapView.mapType = MKMapType.Standard
+        miniMapView.userInteractionEnabled = false
+    }
+    
+    func updateUI() {
+        spinnerMain.stopAnimating()
+        removeBlurEffect()
+        photosCollectionView.reloadData()
     }
     
     // MARK: - Layout UI
     
-    override func viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-    }
-    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
-        setupPhotosCollectionViewLayout()
+        //setupPhotosCollectionViewLayout()
     }
     
     private func setupPhotosCollectionViewLayout() {
         let flowLayout = UICollectionViewFlowLayout()
+        
         // The margins used to lay out content in a section. The default edge insets are all set to 0.
         flowLayout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        flowLayout.minimumInteritemSpacing = CollectionViewLayoutConstants.MinimumItemSpacing
-        flowLayout.minimumLineSpacing = CollectionViewLayoutConstants.MinimumItemSpacing
+        flowLayout.minimumInteritemSpacing = CVLayoutConstants.MinimumItemSpacing
+        flowLayout.minimumLineSpacing = CVLayoutConstants.MinimumItemSpacing
         
-        var itemCount: CGFloat = CollectionViewLayoutConstants.PortraitItemCount
-        if isLandscapeOrientation() { itemCount = CollectionViewLayoutConstants.LandscapeItemCount }
-        let itemWidth = (view.bounds.width - CGFloat((itemCount - 1)*8)) / itemCount
-        flowLayout.itemSize = CGSize(width: itemWidth, height: itemWidth*1.2)
+        let itemCount: CGFloat = isLandscapeOrientation() ? CVLayoutConstants.LandscapeItemCount : CVLayoutConstants.PortraitItemCount
+        let itemWidth = (view.bounds.width - CGFloat((itemCount - 1)*CVLayoutConstants.MinimumItemSpacing)) / itemCount
+        flowLayout.itemSize = CGSize(width: itemWidth, height: itemWidth*CVLayoutConstants.CellItemSizeRatio)
         
+        photosCollectionView.collectionViewLayout.invalidateLayout()
         photosCollectionView.collectionViewLayout = flowLayout
     }
     
     override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransitionToSize(size, withTransitionCoordinator: coordinator)
         
-        self.photosCollectionView.setNeedsLayout()
+        coordinator.animateAlongsideTransition({ (_) in
+            self.addBlurEffect()
+            }) { (_) in
+                self.removeBlurEffect()
+                self.setupPhotosCollectionViewLayout()
+        }
+        
+        //self.photosCollectionView.setNeedsLayout()
         // view.layoutSubviews() trigger viewWillLayoutSubviews, but You should not call this method directly. If you want to force a layout update, call the setNeedsLayout method instead to do so prior to the next drawing update. If you want to update the layout of your views immediately, call the layoutIfNeeded method.
     }
     
@@ -153,6 +185,20 @@ class PhotosCollectionViewController: UIViewController
         self.resumeAllOperations()          // resume all photo download operations
     }
     
+    // MARK: - Actions
+    
+    // fetch new photos or delete selected photos
+    @IBAction func handlePhotos(sender: UIButton)
+    {
+        if selectedIndexPaths.count > 0 {
+            deletePhotos()
+        }
+        else { // fetch more photos
+            cleanCurrentPhotosInPin()
+            fetchFlickrPhotosInfos()
+        }
+    }
+    
     // MARK: - Private helpers
     
     // The off-screen cells should stop download operations
@@ -193,7 +239,7 @@ class PhotosCollectionViewController: UIViewController
             let photo = photoAtIndexPath(indexPath: indexPath)
             
             if let photoRecord = photo.photoRecord where photoRecord.state == PhotoRecordState.New {
-                addPhotoDownloadOperation(forPhoto: photo)
+                addPhotoDownloadOperation(forPhoto: photo) // ONLY here really start to download image or use local image
             }
         }
     }
@@ -219,101 +265,101 @@ class PhotosCollectionViewController: UIViewController
         return photo
     }
     
-    // fetch new photos or delete selected photos
-    @IBAction func handlePhotos(sender: UIButton)
-    {
-        if selectedIndexPaths.count > 0 {
-            deletePhotos()
-            updatePhotoButtonTitle()
-        }
-        else { // more new photos
-            cleanCurrentPhotosInPin()
-            getFlickrPhotos()
-        }
-    }
-    
     private func isLandscapeOrientation() -> Bool {
         return UIInterfaceOrientationIsLandscape(UIApplication.sharedApplication().statusBarOrientation)
     }
     
-    private func setupPhotosCollectionView()
-    {
-        photosCollectionView.dataSource = self
-        photosCollectionView.delegate = self
-        photosCollectionView.allowsMultipleSelection = true // default is false
+    // self.photosCollectionView.collectionViewLayout.collectionViewContentSize() // this is dynmaic size with cell items count
+    private func addBlurEffect() {
+        let blurEffect = UIBlurEffect(style: UIBlurEffectStyle.Light)
+        blurView = UIVisualEffectView(effect: blurEffect)
+        blurView.frame = photosCollectionView.bounds
+        // !!!: An integer bit mask that determines how the receiver resizes itself when its superview’s bounds change.
+        blurView.autoresizingMask = [.FlexibleWidth, .FlexibleHeight]
+        photosCollectionView.addSubview(blurView)
+        photosCollectionView.bringSubviewToFront(spinnerMain)
+        photosCollectionView.userInteractionEnabled = false
+        photosButton.enabled = false
     }
     
-    private func setupMiniMapView()
-    {
-        //miniMapView.delegate = self
-        //miniMapView.mapType = MKMapType.Standard
-        miniMapView.userInteractionEnabled = false
+    private func removeBlurEffect() {
+        if let blurView = blurView where blurView.superview != nil { blurView.removeFromSuperview() }
+        self.photosCollectionView.userInteractionEnabled = true
+        photosButton.enabled = true
     }
     
-    private func getFlickrPhotos()
+    private func fetchFlickrPhotosInfos()
     {
-        if let pin = pin { // Get Flickr Photos by Pin
+        if let pin = pin {
             if let _ = pin.photos where pin.photos?.count > 0 {
-                print("photos in pin")
-                self.photosCollectionView.reloadData()
-            } else {
-                print("new fetched photos")
+                self.updateUI()
+            }
+            else {
+                self.addBlurEffect()
                 spinnerMain.startAnimating()
-                if pin.isFetchingPhotos { return } else { pin.isFetchingPhotos = true }
-                photosButton.enabled = false
+                if pin.isFetchingPhotos {
+                    print("The photos is fetching for this pin!")
+                    return
+                } else { pin.isFetchingPhotos = true }
+                
                 FlickrClient.sharedInstance.getFlickrPhoto(withPin: pin) { result, error in
                     
-                    dispatch_async(dispatch_get_main_queue()) {
-                        self.spinnerMain.stopAnimating()
-                        self.photosButton.enabled = true
-                    }//mainQ
-                    
-                    if error != nil {
-                        print(error)
-                    } else {
-                        if let dictArray = result {
-                            for aPhoto in dictArray {
-                                let _ = Photo(imageURL: aPhoto["imageURL"], imageName: aPhoto["imageName"], pin: pin, insertIntoManagedObjectContext: self.context)
-                            }
-                            
-                            dispatch_async(dispatch_get_main_queue()) {
-                                CoreDataStackManager.sharedInstance.saveContext()    // Save Photos to Core Data
-                                self.photosCollectionView.reloadData()
-                            }//mainQ
+                    if let error = error {
+                        print("Get Flickr photos with error: \(error.localizedDescription)")
+                        dispatch_async(GCDQueues.GlobalMainQueue) {
+                            self.updateUI()
+                            self.alertMessage("Oops! Something wrong. Please try it again.")
                         }
                     }
+                    else {
+                        if let dictArray = result where dictArray.count > 0 {
+                            for aPhoto in dictArray {
+                                let _ = Photo(imageURL: aPhoto["imageURL"], imageName: aPhoto["imageName"], pin: pin,
+                                              insertIntoManagedObjectContext: self.context)
+                            }
+                            
+                            dispatch_async(GCDQueues.GlobalMainQueue) {
+                                CoreDataStackManager.sharedInstance.saveContext()    // Save Photos to Core Data
+                                self.updateUI()
+                            }
+                        }
+                        else {
+                            dispatch_async(GCDQueues.GlobalMainQueue) {
+                                self.updateUI()
+                                self.alertMessage("Couldn't get Flickr photos right now. Please try a different location.")
+                            }
+                        }
+                    }
+                    
                     pin.isFetchingPhotos = false
-                }//FlickrPhoto
+                }//closure
             }
         }//pin
+    }
+    
+    private func alertMessage(msg: String) {
+        let alert = UIAlertController(title: "Error", message: msg, preferredStyle: .Alert)
+        let cancel = UIAlertAction(title: "OK", style: .Cancel, handler: nil)
+        alert.addAction(cancel)
+        self.presentViewController(alert, animated: true, completion: nil)
     }
     
     private func cleanCurrentPhotosInPin()
     {
         if let pin = pin {
+            pin.cleanImages()
             pin.photos = nil
             CoreDataStackManager.sharedInstance.saveContext()
         }
     }
     
-    private func updatePhotoButtonTitle() {
-        if selectedIndexPaths.count > 0 {
-            photosButton.setTitle("Delete Photo(s)", forState: .Normal)
-        } else {
-            photosButton.setTitle("New Photos", forState: .Normal)
-        }
+    private func togglePhotoButtonTitle() {
+        let buttonTitle = (selectedIndexPaths.count > 0) ? Storyboards.DeletePhotos : Storyboards.NewPhotos
+        photosButton.setTitle(buttonTitle, forState: .Normal)
     }
     
-    private func toggleNewPhotosButtonState() {
-        if photosButton.currentTitle == "New Photos" {
-            if pin!.isFetchingPhotos {
-                photosButton.enabled = false
-            } else {
-                photosButton.enabled = true
-            }
-        } else {
-            photosButton.enabled = true
-        }
+    private func setNewPhotosButtonState() {
+        photosButton.enabled = (pin != nil && pin!.isFetchingPhotos) ? false : true
     }
     
     private func deletePhotos()
@@ -323,25 +369,39 @@ class PhotosCollectionViewController: UIViewController
             for indexPath in selectedIndexPaths
             {
                 let photo = pin!.photos![indexPath.row]
-                context.deleteObject(photo) // Here is correct way to delete a photo from core data
+                deleteLocalImageDataFile(photo) // Also delete local image file
+                context.deleteObject(photo)     // Here is correct way to delete a photo from core data
             }
             CoreDataStackManager.sharedInstance.saveContext()   // save once for better performance
             
-            photosCollectionView.deleteItemsAtIndexPaths(selectedIndexPaths)
-                                    // Animates multiple insert, delete, reload, and move operations as a group.
-            photosCollectionView.performBatchUpdates(nil, completion: nil)
-            selectedIndexPaths.removeAll() // clean up
+            // Animates multiple insert, delete, reload, and move operations as a group.
+          //photosCollectionView.performBatchUpdates(updates: (() -> Void)?, completion: ((Bool) -> Void)?)
+            photosCollectionView.performBatchUpdates({ [unowned self] in
+                self.photosCollectionView.deleteItemsAtIndexPaths(self.selectedIndexPaths)
+                }) { [unowned self] (_) in
+                    self.selectedIndexPaths.removeAll()
+                    self.togglePhotoButtonTitle()
+            }
+        }
+    }
+    
+    private func deleteLocalImageDataFile(photo: Photo) {
+        if let photoRecord = photo.photoRecord {
+            photoRecord.deleteImageDataFile()
         }
     }
     
     private struct Storyboards {
         static let PhotoCell = "PhotoCell"              // Collection view cell
+        static let NewPhotos = "New Photos"
+        static let DeletePhotos = "Delete Photo(s)"
     }
     
-    private struct CollectionViewLayoutConstants {
+    private struct CVLayoutConstants {
         static let PortraitItemCount: CGFloat = 3
         static let LandscapeItemCount: CGFloat = 5
         static let MinimumItemSpacing: CGFloat = 8
+        static let CellItemSizeRatio: CGFloat = 1.2
     }
 
 }//EndClass
@@ -355,7 +415,7 @@ extension PhotosCollectionViewController: UICollectionViewDataSource
     }
     
     func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return pin!.photos!.count
+        return (pin != nil && pin!.photos?.count > 0) ? pin!.photos!.count : 0
     }
     
     func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell
@@ -366,7 +426,7 @@ extension PhotosCollectionViewController: UICollectionViewDataSource
         let photo = photoAtIndexPath(indexPath: indexPath)
         if let photoRecord = photo.photoRecord where photoRecord.state == PhotoRecordState.New {
             if !self.photosCollectionView.dragging && !self.photosCollectionView.decelerating {
-                addPhotoDownloadOperation(forPhoto: photo)
+                addPhotoDownloadOperation(forPhoto: photo)  // ONLY here really start to download image or use local image
             }
         }
         cell.photo = photo
@@ -384,28 +444,29 @@ extension PhotosCollectionViewController: UICollectionViewDelegate
     func collectionView(collectionView: UICollectionView, shouldHighlightItemAtIndexPath indexPath: NSIndexPath) -> Bool
     {
         let photo = pin!.photos![indexPath.row]
-        if !photo.didFetchImageData { return false }
-        return true
+        return photo.didFetchImageData || photo.photoRecord?.state == PhotoRecordState.Downloaded ? true : false
     }
     
     // Uncomment this method to specify if the specified item should be selected
     func collectionView(collectionView: UICollectionView, shouldSelectItemAtIndexPath indexPath: NSIndexPath) -> Bool
     {
         let photo = pin!.photos![indexPath.row]
-        if !photo.didFetchImageData { return false }
-        return true
+        
+        return photo.didFetchImageData || photo.photoRecord?.state == PhotoRecordState.Downloaded ? true : false
     }
     
-    func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath) {
+    func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath)
+    {
         selectedIndexPaths.append(indexPath)
-        updatePhotoButtonTitle()
+        togglePhotoButtonTitle()
     }
     
-    func collectionView(collectionView: UICollectionView, didDeselectItemAtIndexPath indexPath: NSIndexPath) {
+    func collectionView(collectionView: UICollectionView, didDeselectItemAtIndexPath indexPath: NSIndexPath)
+    {
         if let index = selectedIndexPaths.indexOf(indexPath) {
             selectedIndexPaths.removeAtIndex(index)
         }
-        updatePhotoButtonTitle()
+        togglePhotoButtonTitle()
     }
 
     // Uncomment these methods to specify if an action menu should be displayed for the specified item, and react to actions performed on the item
@@ -426,7 +487,7 @@ extension PhotosCollectionViewController: UICollectionViewDelegate
 extension Photo {
     var image: UIImage? {
         if self.photoRecord?.state == PhotoRecordState.Downloaded {
-            return self.photoRecord?.image  // image comes online or offline (local file)
+            return self.photoRecord?.image  // image comes online or offline (local image file)
         }
         return UIImage.defaultImage
     }

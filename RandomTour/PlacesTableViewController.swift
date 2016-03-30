@@ -23,9 +23,8 @@ class PlacesTableViewController: UIViewController
 
         // Uncomment the following line to preserve selection between presentations
         // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem()
+        
+        setupMiniMapView()
         
         placesTableView.dataSource = self
         placesTableView.delegate = self
@@ -34,10 +33,8 @@ class PlacesTableViewController: UIViewController
         
         if let pin = (tabBarController as? TourTabBarViewController)?.pin {
             self.pin = pin
+            getGooglePlaces()
         }
-        
-        setupMiniMapView()
-        getGooglePlaces()
     }
     
     override func viewWillAppear(animated: Bool) {
@@ -49,7 +46,6 @@ class PlacesTableViewController: UIViewController
             let mapRegion = MKCoordinateRegionMakeWithDistance(pin.coordinate, 100_000, 100_000)    // distance by meters
             miniMapView.setRegion(mapRegion, animated: false)
             miniMapView.addAnnotation(pin)
-            //miniMapView.showAnnotations([pin], animated: true)
         }
     }
 
@@ -64,30 +60,49 @@ class PlacesTableViewController: UIViewController
     {
         if let pin = pin { // Get places data by pin
             if let _ = pin.places where pin.places?.count > 0 {
-                print("places in pin")
                 self.placesTableView.reloadData()
-            } else {
+            }
+            else {
                 spinner.startAnimating()
                 GooglePlacesClient.sharedInstance.getGooglePlacesByPin(withPin: pin) { (result, error) -> Void in
                     
-                    dispatch_async(dispatch_get_main_queue()) { self.spinner.stopAnimating() }//mainQ
+                    dispatch_async(GCDQueues.GlobalMainQueue) { self.spinner.stopAnimating() }
                     
-                    if error != nil {
-                        print(error)
-                    } else {
-                        if let dictArray = result {
+                    if let error = error {
+                        print("Get Google Places with error: \(error.localizedDescription)")
+                        dispatch_async(GCDQueues.GlobalMainQueue) {
+                            self.spinner.stopAnimating()
+                            self.alertMessage("Oops! Something wrong. Please try it again.")
+                        }
+                    }
+                    else {
+                        if let dictArray = result where dictArray.count > 0 {
                             for placeProps in dictArray {
-                                let _ = Place(placeName: placeProps["name"], vicinity: placeProps["vicinity"], pin: pin, insertIntoManagedObjectContext: self.context)
+                                let _ = Place(placeName: placeProps["name"], vicinity: placeProps["vicinity"], pin: pin,
+                                              insertIntoManagedObjectContext: self.context)
                             }
-                            dispatch_async(dispatch_get_main_queue()) {
-                                CoreDataStackManager.sharedInstance.saveContext()    // Save Photos to Core Data
+                            dispatch_async(dispatch_get_main_queue()) { // save and update UI
+                                CoreDataStackManager.sharedInstance.saveContext()
                                 self.placesTableView.reloadData()
-                            }//mainQ
+                                self.spinner.stopAnimating()
+                            }
+                        } else {
+                            dispatch_async(GCDQueues.GlobalMainQueue) {
+                                self.spinner.stopAnimating()
+                                self.alertMessage("Oops! Something wrong. Please try a different location.")
+                            }
                         }
                     }
                 }//GooglePlace
             }
         }//pin
+    }
+    
+    private func alertMessage(msg: String) {
+        let alert = UIAlertController(title: "Error", message: msg, preferredStyle: .Alert)
+        let cancel = UIAlertAction(title: "OK", style: .Cancel, handler: nil)
+        alert.addAction(cancel)
+        self.presentViewController(alert, animated: true, completion: nil)
     }
     
     private struct Storyboards {
@@ -105,7 +120,7 @@ extension PlacesTableViewController: UITableViewDataSource
     }
     
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return pin!.places!.count
+        return (pin != nil && pin!.places?.count > 0) ? pin!.places!.count : 0
     }
     
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell
@@ -121,8 +136,7 @@ extension PlacesTableViewController: UITableViewDataSource
     
     // Override to support conditional editing of the table view.
     func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
+        return true // Return false if you do not want the specified item to be editable.
     }
     
     // Override to support editing the table view.
@@ -149,5 +163,5 @@ extension PlacesTableViewController: UITableViewDataSource
 
 extension PlacesTableViewController: UITableViewDelegate
 {
-    // ...
+    //...
 }

@@ -44,13 +44,26 @@ class PhotoRecord {
     }
     
     var isImageDataFileExisting: Bool {
-        return NSFileManager.defaultManager().fileExistsAtPath(self.imageDataFileLocalURL.absoluteString)
+        //print("url.path: \(imageDataFileLocalURL.path!)")                       /* /Users/MacBook/.../image.jpg */
+        //print("url.absoluteString: \(imageDataFileLocalURL.absoluteString)")    /* file:///Users/MacBook/.../image.jpg */
+        return NSFileManager.defaultManager().fileExistsAtPath(self.imageDataFileLocalURL.path!)
     }
     
     func saveImageDataToLocal(data: NSData) {
         data.writeToURL(self.imageDataFileLocalURL, atomically: true)
     }
-}
+    
+    func deleteImageDataFile() {
+        if isImageDataFileExisting {
+            do {
+                try NSFileManager.defaultManager().removeItemAtURL(self.imageDataFileLocalURL)
+                self.state = PhotoRecordState.New
+            } catch {
+                print("Delete local image data file failed!")
+            }
+        }
+    }
+}//EndClass
 
 // Photo download operation
 class PhotoDownloader: NSOperation {

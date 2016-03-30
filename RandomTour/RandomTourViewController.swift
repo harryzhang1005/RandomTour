@@ -10,31 +10,37 @@ import UIKit
 import MapKit
 import CoreData
 
+struct Notifications {
+    static let FetchPhotosDone = "FetchPhotosDoneNotification"
+}
+
 class RandomTourViewController: UIViewController
 {
-    @IBOutlet weak var randomTourMapView: MKMapView!
-    @IBOutlet weak var editBarButtonItem: UIBarButtonItem!
-    @IBOutlet weak var toolbar: UIToolbar!
+    @IBOutlet weak var randomTourMapView: MKMapView!        // The world map view
+    @IBOutlet weak var editBarButtonItem: UIBarButtonItem!  // Edit to delete pins on the map
+    @IBOutlet weak var toolbar: UIToolbar!                  // Give hint to delete pins
     
-    private let context = CoreDataStackManager.sharedInstance.managedObjectContext   // core data context
-    private var editingMode = false // pins can be deleted or not
-    private var isDragPinEnded = false  // the pin is dragable, this flag means drag is ended or not
-    private var currentMapRegion: CoordinateRegion? // save map region when user want to change it
-    private var selectedPin: Pin?   // current selected pin
+    private let center = NSNotificationCenter.defaultCenter()
+    private let context = CoreDataStackManager.sharedInstance.managedObjectContext   // core data context in main thread
+    private var editingMode = false         // You can delete a pin ONLY in editing mode
+    private var draggingPinEnded = false    // The pin is draggable, this flag means drag is ended or not
+    private var currentMapRegion: CoordinateRegion? // Store map region when user want to change it
+    private var selectedPin: Pin?                   // The pin is currently selected
     
-    let center = NSNotificationCenter.defaultCenter()
+    // MARK: - VC Life Cycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        toolbar.hidden = true
         
         // when app enter bg state or will be terminated, save the current map region if it has been changed by user
-        center.addObserver(self, selector: "archiveCurrentMapRegion", name: UIApplicationDidEnterBackgroundNotification, object: nil)
-        center.addObserver(self, selector: "archiveCurrentMapRegion", name: UIApplicationWillTerminateNotification, object: nil)
+        center.addObserver(self, selector: #selector(RandomTourViewController.archiveCurrentMapRegion),
+                           name: UIApplicationDidEnterBackgroundNotification, object: nil)
+        center.addObserver(self, selector: #selector(RandomTourViewController.archiveCurrentMapRegion),
+                           name: UIApplicationWillTerminateNotification, object: nil)
         
         setupMapView()
-        
-        toolbar.hidden = true
     }
     
     override func viewWillAppear(animated: Bool) {
@@ -52,56 +58,47 @@ class RandomTourViewController: UIViewController
     private func setupMapView()
     {
         randomTourMapView.delegate = self
-        //randomTourMapView.mapType = MKMapType.Standard    // default?
+        //randomTourMapView.mapType = MKMapType.Standard
         randomTourMapView.userInteractionEnabled = true
-
-        // Here no need, only save map region when user want to change it
-        // currentMapRegion = CoordinateRegion(region: randomTourMapView.region)
         
-        unarchiveCurrentMapRegion()
+        unarchiveCurrentMapRegion() // restore map region
     }
     
-    // MARK: - Map Region
+    @IBAction func editPins(sender: UIBarButtonItem) {
+        editingMode = !editingMode
+        toolbar.hidden = !editingMode
+        editBarButtonItem.title = editingMode ? "Done" : "Edit" // Here need set editBarButtonItem style to custom
+    }
+    
+    // MARK: - Map Region Handlers
     
     lazy var currentRegionFilePath: String = { // Here need specify the variable type
-        // The directory the application uses to store the store file. This code uses a directory named "com.happyguy.RandomTour" in the application's documents Application Support directory.
         // An array of NSURL objects identifying the requested directories. The directories are ordered according to the order of the domain mask constants, with items in the user domain first and items in the system domain last.
-        
-        //        let urls = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)
-        //        return urls[urls.count-1]     // same as the below first
-        
-        // first : Returns a value less than or equal to the number of elements in `self`, *nondestructively*.
         let url = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).first!
-
         return url.URLByAppendingPathComponent("CurrentMapRegion").path!
     }()
     
-    private func archiveCurrentMapRegion()
+    // The callback can't be private func
+    func archiveCurrentMapRegion()
     {
         if let region = currentMapRegion {
             // Archives an object graph rooted at a given object by encoding it into a data object then atomically writes the resulting data object to a file at a given path, and returns a Boolean value that indicates whether the operation was successful.
-            // Here will create a file by the path
-            print("save region path: \(currentRegionFilePath)")
+            // Here will create a file located by the path
             NSKeyedArchiver.archiveRootObject(region, toFile: currentRegionFilePath)
-        } else {
-            print("current region is nil")
         }
     }
     
     private func unarchiveCurrentMapRegion()
     {
-        if NSFileManager.defaultManager().fileExistsAtPath(currentRegionFilePath) { // At first the file will not exist
+        if NSFileManager.defaultManager().fileExistsAtPath(currentRegionFilePath) { // The file is not exist at first
             currentMapRegion = NSKeyedUnarchiver.unarchiveObjectWithFile(currentRegionFilePath) as? CoordinateRegion
             if let region = currentMapRegion {
-                print("unarchive set region")
                 randomTourMapView.setRegion(region.mapRegion, animated: false)
-            } else {
-                print("unarchive failed")
             }
         }
     }
     
-    // MARK: - Pin Handlers
+    // MARK: - Pin CRUD Handlers
     
     // Read
     private func loadPins()
@@ -126,68 +123,74 @@ class RandomTourViewController: UIViewController
     
     // Delete
     private func deletePin(pin: Pin) {
-        randomTourMapView.removeAnnotation(pin)
-        context.deleteObject(pin)
+        pin.cleanImages()                       // First, clean image files if any
+        
+        randomTourMapView.removeAnnotation(pin) // Then, remove pin from map view
+        
+        context.deleteObject(pin)               // Third, delete the pin from Core Data database
         CoreDataStackManager.sharedInstance.saveContext()
     }
     
+    // Update
     private func updatePin(pin: Pin) {
-        pin.photos = nil    // first, clean them up
+        pin.cleanImages()   // First, clean image files if any
+        
+        pin.photos = nil    // Then, clean photos and places infos
         pin.places = nil
         CoreDataStackManager.sharedInstance.saveContext()
-        getFlickrPhotos(pin)
+        
+        fetchFlickrPhotosInfosWithPin(pin)    // Third, fetch new photos infos
     }
 
-    @IBAction func editPins(sender: UIBarButtonItem) {
-        editingMode = !editingMode
-        toolbar.hidden = !editingMode
-        // editBarButtonItem style is custom
-        editingMode ? (editBarButtonItem.title = "Done") : (editBarButtonItem.title = "Edit")
-    }
-
-    // Long press to drop a pin
+    // Create - Long press to drop a pin
     @IBAction func addPin(sender: UILongPressGestureRecognizer)
     {
         // Only allow pin to be dropped on state .Began, otherwise we will end up with a series of pins
         if sender.state != .Began { return }
         
-        let pointPress = sender.locationInView(randomTourMapView)
+        let pressingPoint = sender.locationInView(randomTourMapView)
         
         // Converts a point in the specified view’s coordinate system to a map coordinate.
-        let mapLocation = randomTourMapView.convertPoint(pointPress, toCoordinateFromView: randomTourMapView)
+        let pointOnMap = randomTourMapView.convertPoint(pressingPoint, toCoordinateFromView: randomTourMapView)
         
-        let annoPin = Pin(latitude: mapLocation.latitude, longitude: mapLocation.longitude, insertIntoManagedObjectContext: self.context)
-        CoreDataStackManager.sharedInstance.saveContext()    // Save pin to Core Data
+        // Create a pin and save it to Core Data database
+        let annoPin = Pin(latitude: pointOnMap.latitude, longitude: pointOnMap.longitude,
+                          insertIntoManagedObjectContext: self.context)
+        CoreDataStackManager.sharedInstance.saveContext()
         
-        getFlickrPhotos(annoPin)
+        fetchFlickrPhotosInfosWithPin(annoPin)
+        
         randomTourMapView.addAnnotation(annoPin)
-        
-        // Sets the visible region so that the map displays the specified annotations.
-        //randomTourMapView.showAnnotations([annoPin], animated: true)  // here no need
     }
     
-    // Pre-fetch Flickr photos
-    private func getFlickrPhotos(pin: Pin)
+    // Pre-fetch Flickr photos infos, but not really image files
+    private func fetchFlickrPhotosInfosWithPin(pin: Pin)
     {
-        if pin.isFetchingPhotos { return } else { pin.isFetchingPhotos = true }
+        if pin.isFetchingPhotos {
+            return  // return as early as possible
+        } else { pin.isFetchingPhotos = true }
         
-        // NOTE: sometimes can't fetch photos, should try it later or change pin
         FlickrClient.sharedInstance.getFlickrPhoto(withPin: pin) { result, error in
             if let error = error {
-                print(error)
+                print("Fetch Flickr photos with error: \(error.localizedDescription)")
             } else {
-                if let dictArray = result { // result is [[String:String]]
+                if let dictArray = result where dictArray.count > 0 { // result is [[String:String]]
                     for dict in dictArray {
-                        let _ = Photo(imageURL: dict["imageURL"], imageName: dict["imageName"], pin: pin, insertIntoManagedObjectContext: self.context)
-                        
+                        let _ = Photo(imageURL: dict["imageURL"], imageName: dict["imageName"], pin: pin,
+                                      insertIntoManagedObjectContext: self.context)
                     }
                     
-                    // Back to main queue and save it
-                    dispatch_async(dispatch_get_main_queue()) { CoreDataStackManager.sharedInstance.saveContext() }
+                    dispatch_async(dispatch_get_main_queue()) { // save and update UI
+                        CoreDataStackManager.sharedInstance.saveContext()
+                        NSNotificationCenter.defaultCenter().postNotificationName(Notifications.FetchPhotosDone, object: nil)
+                    }
+                } else {
+                    print("Couldn't get Flickr photos right now. Please try a different location.")
                 }
             }
+            
             pin.isFetchingPhotos = false
-        }//flickr
+        }//closure
     }
     
     // MARK: - Navigation
@@ -196,9 +199,7 @@ class RandomTourViewController: UIViewController
     {
         if segue.identifier == Storyboards.PinSegue {
             if let tourTBVC = segue.destinationViewController as? TourTabBarViewController {
-                if let pin = selectedPin {
-                    tourTBVC.pin = pin
-                }
+                tourTBVC.pin = selectedPin
             }
         }
     }
@@ -210,41 +211,40 @@ class RandomTourViewController: UIViewController
     
 }//EndClass
 
+// Map view only have delegate no data source protocol
 extension RandomTourViewController: MKMapViewDelegate {
     
     func mapView(mapView: MKMapView, viewForAnnotation annotation: MKAnnotation) -> MKAnnotationView?
     {
-        var annoView = mapView.dequeueReusableAnnotationViewWithIdentifier(Storyboards.MapAnnoView) as? MKPinAnnotationView
-        if annoView == nil {
-            annoView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: Storyboards.MapAnnoView)
-//            annoView!.canShowCallout = true
-//            annoView?.userInteractionEnabled = true
-//            annoView?.pinTintColor = UIColor.redColor()
+        var aPin = mapView.dequeueReusableAnnotationViewWithIdentifier(Storyboards.MapAnnoView) as? MKPinAnnotationView
+        if aPin == nil {
+            aPin = MKPinAnnotationView(annotation: annotation, reuseIdentifier: Storyboards.MapAnnoView)
+//            aPin?.canShowCallout = true
+//            aPin?.userInteractionEnabled = true
+//            aPin?.pinTintColor = UIColor.redColor()
         } else {
-            annoView?.annotation = annotation
+            aPin?.annotation = annotation
         }
         
-        annoView?.animatesDrop = true
-        annoView?.draggable = true
+        aPin?.animatesDrop = true
+        aPin?.draggable = true
         
-        // immediately select this pin view (needs to be selected first to be dragged)
-        //annoView?.setSelected(true, animated: false)
-        
-        return annoView
+        return aPin
     }
     
+    // work horse
     func mapView(mapView: MKMapView, didSelectAnnotationView view: MKAnnotationView)
     {
-        // deselect pin and setSelected state to true, this allows any pin on the map to be moved to a new location with a single long press gesture or with a single tap segue to photo album
-        mapView.deselectAnnotation(view.annotation, animated: false)
+        // !!!Key point: deselect pin and setSelected state to true, this allows any pin on the map to be moved to a new location with a single long press gesture or with a single tap segue to photo album
+        mapView.deselectAnnotation(view.annotation, animated: false) // Deselects the specified annotation and hides its callout view.
         view.setSelected(true, animated: false)
         
         let pin = view.annotation as! Pin
         
         // Update a Pin
-        if isDragPinEnded {
+        if draggingPinEnded {
             updatePin(pin)
-            isDragPinEnded = false
+            draggingPinEnded = false
             return
         }
         
@@ -252,25 +252,21 @@ extension RandomTourViewController: MKMapViewDelegate {
         if editingMode {
             deletePin(pin)
         } else {
-            selectedPin = pin   // only this case select a pin and segue
+            selectedPin = pin   // only this case select a pin and perform a segue
             self.performSegueWithIdentifier(Storyboards.PinSegue, sender: self)
         }
     }
     
-    // Here is key point to update the map region
+    // Update the map region
     func mapView(mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
         // This case, mapView.region is after changing region. Means the changed region or the current region.
         currentMapRegion = CoordinateRegion(region: mapView.region)
     }
     
-//    func mapView(mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
-//        // This case, mapView.region is before changing region
-//    }
-    
     // Drag a pin ended
     func mapView(mapView: MKMapView, annotationView view: MKAnnotationView, didChangeDragState newState: MKAnnotationViewDragState, fromOldState oldState: MKAnnotationViewDragState) {
         if newState == MKAnnotationViewDragState.Ending {
-            isDragPinEnded = true
+            draggingPinEnded = true
         }
     }
     

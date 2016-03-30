@@ -10,10 +10,8 @@ import Foundation
 import CoreData
 import MapKit
 
-class Pin: NSManagedObject {
-
-// Insert code here to add functionality to your managed object subclass
-
+class Pin: NSManagedObject
+{
     override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
     }
@@ -27,7 +25,21 @@ class Pin: NSManagedObject {
         self.isFetchingPhotos = false
     }
     
-}
+    // Still need clean image files
+    func cleanImages() {
+        if let photos = self.photos {
+            for photo in photos {
+                deleteLocalImageDataFile(photo)
+            }
+        }
+    }
+    
+    private func deleteLocalImageDataFile(photo: Photo) {
+        if let photoRecord = photo.photoRecord {
+            photoRecord.deleteImageDataFile()
+        }
+    }
+}//EndClass
 
 extension Pin: MKAnnotation {
     
@@ -35,7 +47,7 @@ extension Pin: MKAnnotation {
         get {
             return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         }
-        set { // draggable pin also need set
+        set { // for draggable pin
             latitude = newValue.latitude
             longitude = newValue.longitude
         }

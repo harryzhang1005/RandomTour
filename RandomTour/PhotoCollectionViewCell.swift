@@ -39,6 +39,7 @@ class PhotoCollectionViewCell: UICollectionViewCell
     func configCell(photo: Photo)
     {
         self.backgroundView = UIImageView(image: photo.image)
+        self.backgroundView?.contentMode = UIViewContentMode.ScaleAspectFill
         if let photoRecord = photo.photoRecord {
             photoRecord.state == .New ? self.spinner.startAnimating() : self.spinner.stopAnimating()
         } else {

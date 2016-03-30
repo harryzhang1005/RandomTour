@@ -9,11 +9,8 @@
 import Foundation
 import CoreData
 
-
-class Place: NSManagedObject {
-
-// Insert code here to add functionality to your managed object subclass
-    
+class Place: NSManagedObject
+{
     override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
     }

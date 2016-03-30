@@ -103,9 +103,9 @@
 			children = (
 				FAC355231C46BC490056BB76 /* Common */,
 				FACD65E81C4A04F7001E5A1E /* ClientAPIs */,
-				FAC355141C46A6D30056BB76 /* Controller */,
-				FAC355131C46A6CE0056BB76 /* View */,
-				FAC355121C46A6C80056BB76 /* Model */,
+				FAC355141C46A6D30056BB76 /* Controllers */,
+				FAC355131C46A6CE0056BB76 /* Views */,
+				FAC355121C46A6C80056BB76 /* Models */,
 				FAC355071C46A1410056BB76 /* Assets.xcassets */,
 				FAC355091C46A1410056BB76 /* LaunchScreen.storyboard */,
 				FAC354FD1C46A1410056BB76 /* AppDelegate.swift */,
@@ -114,7 +114,7 @@
 			path = RandomTour;
 			sourceTree = "<group>";
 		};
-		FAC355121C46A6C80056BB76 /* Model */ = {
+		FAC355121C46A6C80056BB76 /* Models */ = {
 			isa = PBXGroup;
 			children = (
 				FAC355371C46E1090056BB76 /* Photo+CoreDataProperties.swift */,
@@ -127,19 +127,19 @@
 				FACD65E61C494254001E5A1E /* CoordinateRegion.swift */,
 				FA8822331C9A1B0F0078AF03 /* PhotoDownloader.swift */,
 			);
-			name = Model;
+			name = Models;
 			sourceTree = "<group>";
 		};
-		FAC355131C46A6CE0056BB76 /* View */ = {
+		FAC355131C46A6CE0056BB76 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				FAC355011C46A1410056BB76 /* Main.storyboard */,
 				FAC3551B1C46B56C0056BB76 /* PhotoCollectionViewCell.swift */,
 			);
-			name = View;
+			name = Views;
 			sourceTree = "<group>";
 		};
-		FAC355141C46A6D30056BB76 /* Controller */ = {
+		FAC355141C46A6D30056BB76 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
 				FAC354FF1C46A1410056BB76 /* RandomTourViewController.swift */,
@@ -147,7 +147,7 @@
 				FAC355171C46A7630056BB76 /* PhotosCollectionViewController.swift */,
 				FAC355151C46A7350056BB76 /* PlacesTableViewController.swift */,
 			);
-			name = Controller;
+			name = Controllers;
 			sourceTree = "<group>";
 		};
 		FAC355231C46BC490056BB76 /* Common */ = {

@@ -44,17 +44,19 @@ class GooglePlacesClient: HttpRequestAPI
                     for jsonPlace in jsonPlacesArray
                     {
                         if let place = self.jsonParamsToPlaceProperties(jsonPlace as! NSDictionary) {
-                            //print("\(place)")
                             placeProps.append(place)
                         }
                     }
                     compHandler(result: placeProps, error: nil)
                 } else {
-                    print("Couldn't get places information from Google. Please try again later or try a different location.")
+                    let error = self.generateError("Couldn't get Google Places right now. Please try a different location.")
+                    compHandler(result: nil, error: error)
                 }
             }
         }//http
     }
+    
+    // MARK: - Privates
     
     private func jsonParamsToPlaceProperties(jsonData: NSDictionary) -> [String:String]?
     {
@@ -66,6 +68,15 @@ class GooglePlacesClient: HttpRequestAPI
             }
         }
         return nil
+    }
+    
+    private func generateError(desc: String) -> NSError {
+        var dict = [NSObject:AnyObject]()
+        dict[NSLocalizedDescriptionKey] = desc
+        
+        //NSError(domain: String, code: Int, userInfo: [NSObject : AnyObject]?)
+        let error = NSError(domain: "FetchGooglePlaces", code: 111, userInfo: dict)
+        return error
     }
     
 }//EndClass

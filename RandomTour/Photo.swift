@@ -9,11 +9,10 @@
 import Foundation
 import CoreData
 
-
-class Photo: NSManagedObject {
-
-// Insert code here to add functionality to your managed object subclass
-
+class Photo: NSManagedObject
+{
+    //NSEntityDescription.insertNewObjectForEntityForName("Person", inManagedObjectContext: context!) as NSManagedObject
+    //NSEntityDescription.insertNewObjectForEntityForName(entityName: String, inManagedObjectContext: NSManagedObjectContext)
     override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
     }
@@ -28,7 +27,8 @@ class Photo: NSManagedObject {
         self.pin = pin
         self.didFetchImageData = false
     }
-    
+
+    // for image download and cache
     var photoRecord: PhotoRecord?
     var indexPath: NSIndexPath?
 }

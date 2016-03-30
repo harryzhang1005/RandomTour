@@ -24,6 +24,8 @@ class FlickrClient: HttpRequestAPI
         static let FlickrPhotoSearch = "flickr.photos.search"
         
         static let BboxEdge = 0.1
+        
+        static let MinimumPhotoPagesDiff = 300
     }
     
     private struct ImageSize {
@@ -62,7 +64,8 @@ class FlickrClient: HttpRequestAPI
         photoSearchGetRandomPage(bboxParams) { randomPage, error in
             if error != nil {
                 compHandler(result: nil, error: error)
-            } else if let randomPageNum = randomPage {
+            }
+            else if let randomPageNum = randomPage {
                 let urlParams: [String:AnyObject] = [
                     "method": Constants.FlickrPhotoSearch,
                     "bbox": bboxParams,
@@ -75,7 +78,7 @@ class FlickrClient: HttpRequestAPI
                     if error != nil {
                         compHandler(result: nil, error: error)
                     } else {
-                        if let jsonPhotosDict = result!["photos"] as? NSDictionary {
+                        if let result = result, jsonPhotosDict = result["photos"] as? NSDictionary {
                             if let jsonPhotoArray = jsonPhotosDict["photo"] as? NSArray
                             {
                                 var photoProps = [[String:String]]()
@@ -87,17 +90,30 @@ class FlickrClient: HttpRequestAPI
                                 }
                                 compHandler(result: photoProps, error: nil)
                             } else {
-                                print("Error-1: Couldn't get photo now. Please try again later or try a different location.")
+                                let error = self.generateError("Couldn't get photo right now. Please try a different location.")
+                                compHandler(result: nil, error: error)
                             }
                         } else {
-                            print("Error-2: Couldn't get photo now. Please try again later or try a different location.")
+                            let error = self.generateError("Couldn't get photo right now. Please try a different location.")
+                            compHandler(result: nil, error: error)
                         }
                     }
-                }
+                }//httpClosure
             } else {
                 compHandler(result: nil, error: nil)
             }
         }
+    }
+    
+    // MARK: - Privates
+    
+    private func generateError(desc: String) -> NSError {
+        var dict = [NSObject:AnyObject]()
+        dict[NSLocalizedDescriptionKey] = desc
+        
+        //NSError(domain: String, code: Int, userInfo: [NSObject : AnyObject]?)
+        let error = NSError(domain: "FetchFlickrPhotos", code: 110, userInfo: dict)
+        return error
     }
     
     private func photoSearchGetRandomPage(bboxParam: String, completionHandler: (randomPage: Int?, error: NSError?) -> Void)
@@ -109,8 +125,6 @@ class FlickrClient: HttpRequestAPI
         ]
         
         let url = Constants.FlickrBaseURL + urlAddParams(urlParams)
-        
-        // Could not cast value of type 'NSNull' (0x10c022378) to 'NSString' (0x10c412b20).
         httpRequest(url) { result, error in
             if error != nil {
                 completionHandler(randomPage: nil, error: error)
@@ -123,26 +137,24 @@ class FlickrClient: HttpRequestAPI
                         } else {
                             print("Couldn't get a random page number. Please try again later or try a different location.")
                         }
-                    } else { print("No total") }
+                    } else { print("No total pages count") }
                 } else { print("No photos") }
             }
         }
     }
     
     /* jsonPhoto dictionary sample:
-    
-    {
-    farm = 2;
-    id = 23752557533;
-    isfamily = 0;
-    isfriend = 0;
-    ispublic = 1;
-    owner = "50871308@N08";
-    secret = 69419552cd;
-    server = 1573;
-    title = "Evening in Abdij van Park III";
-    }
-    
+        {
+            farm = 2;
+            id = 23752557533;
+            isfamily = 0;
+            isfriend = 0;
+            ispublic = 1;
+            owner = "50871308@N08";
+            secret = 69419552cd;
+            server = 1573;
+            title = "Evening in Abdij van Park III";
+        }
     */
     private func photoParamsToProperties(jsonPhoto: NSDictionary) -> [String:String]?
     {
@@ -163,9 +175,6 @@ class FlickrClient: HttpRequestAPI
         
         return nil
     }
-    
-    
-    // MARK: - Private helpers
     
     /*
     Latitude measurements range from 0° to (+/–)90°. Equator is 0°.
@@ -203,11 +212,13 @@ class FlickrClient: HttpRequestAPI
     private func getRandomPageNumber(maxX maxX: UInt32, minX: UInt32 = 1) -> Int
     {
         var result = ( arc4random() % (maxX - minX + 1) ) + minX
+        var pageDiff = Int(minX)
         
-        if let currentPage = currentPageNumber {
+        if currentPageNumber != nil && Int(maxX) > Constants.MinimumPhotoPagesDiff * 2 {
             repeat {
                 result = ( arc4random() % (maxX - minX + 1) ) + minX
-            } while(currentPage == Int(result))
+                pageDiff = abs(Int(result) - currentPageNumber!)
+            } while(pageDiff < Constants.MinimumPhotoPagesDiff) // currentPage == Int(result)
         }
         
         currentPageNumber = Int(result)
@@ -216,4 +227,4 @@ class FlickrClient: HttpRequestAPI
         return Int(result)
     }
 
-}
+}//EndClass
