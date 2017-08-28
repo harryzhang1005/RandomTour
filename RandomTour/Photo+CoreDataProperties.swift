@@ -16,7 +16,7 @@ extension Photo {
 
     @NSManaged var imageURL: String?            // The photo URL link in Flickr
     @NSManaged var imageName: String?           // The photo name
-    @NSManaged var didFetchImageData: Bool      // The image has been downloaded or not
-    @NSManaged var pin: Pin?                    // The photo belongs to which pin ?
+    @NSManaged var didFetchImageData: Bool      // Whether the image has been downloaded or not
+    @NSManaged var pin: Pin?                    // Which pin does the photo belong to?
 
 }

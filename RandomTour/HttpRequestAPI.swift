@@ -15,8 +15,8 @@ class HttpRequestAPI
     var additionalHTTPHeaderFields: [String:String]?
     var additionalURLParams: [String:AnyObject]?
     
-    typealias CompHandler = (result: [[String:String]]?, error: NSError?) -> Void
-    typealias CompletionHandler = (result: AnyObject?, error: NSError?) -> Void
+    typealias CompHandler = (_ result: [[String:String]]?, _ error: NSError?) -> Void
+    typealias CompletionHandler = (_ result: AnyObject?, _ error: NSError?) -> Void
     
     enum HttpRequestType: String {
         case POST = "POST"
@@ -34,59 +34,60 @@ class HttpRequestAPI
     -- Your ability to perform authentication is limited.
     -- You cannot perform background downloads or uploads while your app is not running.
     */
-    private let session = NSURLSession.sharedSession()
+    fileprivate let session = URLSession.shared
     
-    private struct ErrorMessages {
+    fileprivate struct ErrorMessages {
         static let NoInternet = "Can't connect to the Internet!"
         static let InvalidURL = "Invalid URL"
         static let EmptyURL = "Empty URL"
     }
     
-    // MARK: - Public APIs HTTP CRUD
+    // MARK: - Public APIs for HTTP CRUD
     
     /*
     GET only need urlString
     requestParams often use with POST or PUT
     cookieName often use with DELETE
     */
-    func httpRequest(urlString: String, type: HttpRequestType = .GET, requestParams: [String:AnyObject]? = nil, cookieName: String? = nil, completionHandler: CompletionHandler)
+    func httpRequest(_ urlString: String, type: HttpRequestType = .GET, requestParams: [String:AnyObject]? = nil,
+                     cookieName: String? = nil, completionHandler: @escaping CompletionHandler)
     {
         checkNetwork(completionHandler)
         
         if !urlString.isEmpty {
-            if let url = NSURL(string: urlString)
+            if let url = URL(string: urlString)
             {
                 let request = self.getRequest(withType: type, url: url, requestParams: requestParams, cookieName: cookieName)
-                let task = session.dataTaskWithRequest(request) { data, response, error in
+                let task = session.dataTask(with: request, completionHandler: { data, response, error in
                     if error != nil {
-                        completionHandler(result: nil, error: error); return
+                        completionHandler(nil, error! as NSError); return
                     } else {
                         self.parseJSONData(data!, completionHandler: completionHandler)
                     }
-                }
+                }) 
                 task.resume()
             } else {
-                completionHandler(result: nil, error: self.getError(ErrorMessages.InvalidURL))
+                completionHandler(nil, self.getError(ErrorMessages.InvalidURL))
             }
         } else {
-            completionHandler(result: nil, error: self.getError(ErrorMessages.EmptyURL))
+            completionHandler(nil, self.getError(ErrorMessages.EmptyURL))
         }
     }
     
-    // MARK: - Public Helpers
+    // MARK: - Public helpers
     
-    func urlReplaceKey(urlString: String, params: [String:String]) -> String
+    func urlReplaceKey(_ urlString: String, params: [String:String]) -> String
     {
         var url = urlString
         for (key, value) in params {
-            if url.rangeOfString("{\(key)}") != nil {
-                url = url.stringByReplacingOccurrencesOfString("{\(key)}", withString: value)
+            if url.range(of: "{\(key)}") != nil {
+                url = url.replacingOccurrences(of: "{\(key)}", with: value)
             }
         }
         return url
     }
     
-    func urlAddParams(params: [String:AnyObject]) -> String
+    func urlAddParams(_ params: [String:AnyObject]) -> String
     {
         var urlVars = [String]()
         
@@ -102,19 +103,20 @@ class HttpRequestAPI
             let stringValue = "\(value)"    /* Make sure that it is a string value */
             
             /* Escape it */
-            let escapedValue = stringValue.stringByAddingPercentEncodingWithAllowedCharacters(NSCharacterSet.URLQueryAllowedCharacterSet())
+            let escapedValue = stringValue.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)
             
             /* Append it */
             urlVars += [key + "=" + "\(escapedValue!)"]
         }
-        return (!urlVars.isEmpty ? "?" : "") + urlVars.joinWithSeparator("&")
+        return (!urlVars.isEmpty ? "?" : "") + urlVars.joined(separator: "&")
     }
     
-    // MARK: - Private Helpers
+    // MARK: - Private helpers
     
-    private func getRequest(withType type: HttpRequestType, url: NSURL, requestParams: [String: AnyObject]? = nil, cookieName: String? = nil) -> NSURLRequest
+    fileprivate func getRequest(withType type: HttpRequestType, url: URL, requestParams: [String: AnyObject]? = nil,
+                                cookieName: String? = nil) -> URLRequest
     {
-        let request = NSMutableURLRequest(URL: url)
+        let request = NSMutableURLRequest(url: url)
         
         if let additionalHTTPHeaderFields = additionalHTTPHeaderFields {
             for (httpHeaderField, value) in additionalHTTPHeaderFields {
@@ -124,28 +126,29 @@ class HttpRequestAPI
         }
         
         switch type {
+			
         case .GET: break
             
         case .POST:
-            request.HTTPMethod = type.rawValue  // "POST"
+            request.httpMethod = type.rawValue  // "POST"
             request.addValue("application/json", forHTTPHeaderField: "Accept")
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
             if let httpBodyParams = requestParams {
-                request.HTTPBody = try? NSJSONSerialization.dataWithJSONObject(httpBodyParams, options: [])
+                request.httpBody = try? JSONSerialization.data(withJSONObject: httpBodyParams, options: [])
             }
         case .PUT:
-            request.HTTPMethod = type.rawValue  // "PUT"
+            request.httpMethod = type.rawValue  // "PUT"
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
             if let httpBodyParams = requestParams {
-                request.HTTPBody = try? NSJSONSerialization.dataWithJSONObject(httpBodyParams, options: [])
+                request.httpBody = try? JSONSerialization.data(withJSONObject: httpBodyParams, options: [])
             }
         case .DELETE:
-            request.HTTPMethod = type.rawValue  // "DELETE"
+            request.httpMethod = type.rawValue  // "DELETE"
             
             if let cookieName = cookieName
             {
-                var cookie: NSHTTPCookie?
-                let sharedCookieStorage = NSHTTPCookieStorage.sharedHTTPCookieStorage()
+                var cookie: HTTPCookie?
+                let sharedCookieStorage = HTTPCookieStorage.shared
                 if let sharedCookies = sharedCookieStorage.cookies {
                     for sharedCookie in sharedCookies {
                         if sharedCookie.name == cookieName { cookie = sharedCookie }
@@ -157,16 +160,16 @@ class HttpRequestAPI
             }
         }
         
-        return request
+        return request as URLRequest
     }
     
-    private func getError(err: String) -> NSError {
+    fileprivate func getError(_ err: String) -> NSError {
         return NSError(domain: "HttpRequestAPI", code: 1, userInfo: [NSLocalizedDescriptionKey : err])
     }
     
-    private func checkNetwork(completionHandler: CompletionHandler) {
+    fileprivate func checkNetwork(_ completionHandler: CompletionHandler) {
         if !Reachability.isConnectedToNetwork() {
-            completionHandler(result: nil, error: self.getError(ErrorMessages.NoInternet))
+            completionHandler(nil, self.getError(ErrorMessages.NoInternet))
             return
         }
     }
@@ -193,22 +196,25 @@ class HttpRequestAPI
     }
     
     */
-    private func parseJSONData(data: NSData, completionHandler: CompletionHandler)
+    fileprivate func parseJSONData(_ data: Data, completionHandler: CompletionHandler)
     {
-        let newData: NSData
-        if skipResponseDataLength != nil { /* subset response data! */
-            newData = data.subdataWithRange(NSMakeRange(skipResponseDataLength!, data.length - skipResponseDataLength!))
+        var newData: Data
+		
+        if skipResponseDataLength != nil { // subset response data
+            newData = data.subdata(in: skipResponseDataLength!..<data.count - skipResponseDataLength!)
+			//newData = data.subdata(in: NSMakeRange(skipResponseDataLength!, data.count - skipResponseDataLength!) )
         } else {
             newData = data
         }
         
         do {
             // Return A Foundation object from the JSON data in newData, or nil if an error occurs.
-            let parsedResult = try NSJSONSerialization.JSONObjectWithData(newData, options: NSJSONReadingOptions.AllowFragments)
+            let parsedResult = try JSONSerialization.jsonObject(with: newData,
+                                                                options: JSONSerialization.ReadingOptions.allowFragments)
             //print("json resp result: \(parsedResult)")
-            completionHandler(result: parsedResult, error: nil)
+            completionHandler(parsedResult as AnyObject, nil)
         } catch let error as NSError {
-            completionHandler(result: nil, error: error)
+            completionHandler(nil, error)
         }
     }
     

@@ -9,14 +9,39 @@
 import UIKit
 import MapKit
 
+// FIXME: comparison operators with optionals were removed from the Swift Standard Libary.
+// Consider refactoring the code to use the non-optional operators.
+fileprivate func < <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
+  switch (lhs, rhs) {
+  case let (l?, r?):
+    return l < r
+  case (nil, _?):
+    return true
+  default:
+    return false
+  }
+}
+
+// FIXME: comparison operators with optionals were removed from the Swift Standard Libary.
+// Consider refactoring the code to use the non-optional operators.
+fileprivate func > <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
+  switch (lhs, rhs) {
+  case let (l?, r?):
+    return l > r
+  default:
+    return rhs < lhs
+  }
+}
+
+// Present places from Google
 class PlacesTableViewController: UIViewController
 {
     @IBOutlet weak var miniMapView: MKMapView!
     @IBOutlet weak var placesTableView: UITableView!
     @IBOutlet weak var spinner: UIActivityIndicatorView!
     
-    private let context = CoreDataStackManager.sharedInstance.managedObjectContext
-    private var pin: Pin?
+    fileprivate let context = CoreDataStackManager.sharedInstance.managedObjectContext
+    fileprivate var pin: Pin?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -34,7 +59,7 @@ class PlacesTableViewController: UIViewController
         getGooglePlaces()
     }
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         if let pin = self.pin {
@@ -46,43 +71,43 @@ class PlacesTableViewController: UIViewController
     
     // MARK: - Privates
 
-    private func setupMiniMapView()
+    fileprivate func setupMiniMapView()
     {
-        miniMapView.userInteractionEnabled = false
+        miniMapView.isUserInteractionEnabled = false
     }
     
-    private func getGooglePlaces()
+    fileprivate func getGooglePlaces()
     {
         if let pin = pin { // Get places data by pin
-            if let _ = pin.places where pin.places?.count > 0 {
+            if let _ = pin.places, pin.places?.count > 0 {
                 self.placesTableView.reloadData()
             }
             else {
                 spinner.startAnimating()
                 GooglePlacesClient.sharedInstance.getGooglePlacesByPin(withPin: pin) { (result, error) -> Void in
                     
-                    dispatch_async(GCDQueues.GlobalMainQueue) { self.spinner.stopAnimating() }
+                    GCDQueues.GlobalMainQueue.async { self.spinner.stopAnimating() }
                     
                     if let error = error {
                         print("Get Google Places with error: \(error.localizedDescription)")
-                        dispatch_async(GCDQueues.GlobalMainQueue) {
+                        GCDQueues.GlobalMainQueue.async {
                             self.spinner.stopAnimating()
                             self.alertMessage("Oops! Something wrong. Please try it again.")
                         }
                     }
                     else {
-                        if let dictArray = result where dictArray.count > 0 {
+                        if let dictArray = result, dictArray.count > 0 {
                             for placeProps in dictArray {
                                 let _ = Place(placeName: placeProps["name"], vicinity: placeProps["vicinity"], pin: pin,
                                               insertIntoManagedObjectContext: self.context)
                             }
-                            dispatch_async(dispatch_get_main_queue()) { // save and update UI
+                            DispatchQueue.main.async { // save and update UI
                                 CoreDataStackManager.sharedInstance.saveContext()
                                 self.placesTableView.reloadData()
                                 self.spinner.stopAnimating()
                             }
                         } else {
-                            dispatch_async(GCDQueues.GlobalMainQueue) {
+                            GCDQueues.GlobalMainQueue.async {
                                 self.spinner.stopAnimating()
                                 self.alertMessage("Oops! Something wrong. Please try a different location.")
                             }
@@ -93,14 +118,14 @@ class PlacesTableViewController: UIViewController
         }//pin
     }
     
-    private func alertMessage(msg: String) {
-        let alert = UIAlertController(title: "Error", message: msg, preferredStyle: .Alert)
-        let cancel = UIAlertAction(title: "OK", style: .Cancel, handler: nil)
+    fileprivate func alertMessage(_ msg: String) {
+        let alert = UIAlertController(title: "Error", message: msg, preferredStyle: .alert)
+        let cancel = UIAlertAction(title: "OK", style: .cancel, handler: nil)
         alert.addAction(cancel)
-        self.presentViewController(alert, animated: true, completion: nil)
+        self.present(alert, animated: true, completion: nil)
     }
     
-    private struct Storyboards {
+    fileprivate struct Storyboards {
         static let PlaceCell = "PlaceCell"              // Table view cell
     }
 
@@ -110,17 +135,17 @@ class PlacesTableViewController: UIViewController
 
 extension PlacesTableViewController: UITableViewDataSource
 {
-    func numberOfSectionsInTableView(tableView: UITableView) -> Int {
+    func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
     
-    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return (pin != nil && pin!.places?.count > 0) ? pin!.places!.count : 0
     }
     
-    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell
     {
-        let cell = tableView.dequeueReusableCellWithIdentifier(Storyboards.PlaceCell, forIndexPath: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: Storyboards.PlaceCell, for: indexPath)
         
         // Configure the cell...
         let place = pin!.places![indexPath.row]
@@ -130,27 +155,27 @@ extension PlacesTableViewController: UITableViewDataSource
     }
     
     // Override to support conditional editing of the table view.
-    func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
+    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
         return true // Return false if you do not want the specified item to be editable.
     }
     
     // Override to support editing the table view.
-    func tableView(tableView: UITableView, commitEditingStyle editingStyle: UITableViewCellEditingStyle, forRowAtIndexPath indexPath: NSIndexPath)
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath)
     {
-        if editingStyle == .Delete {
+        if editingStyle == .delete {
             // Delete the row from the data source
             deletePlace(atIndexPath: indexPath)
             
-            tableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
+            tableView.deleteRows(at: [indexPath], with: .fade)
         }
-        else if editingStyle == .Insert {
+        else if editingStyle == .insert {
             // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
         }
     }
     
-    private func deletePlace(atIndexPath indexPath: NSIndexPath) {
+    fileprivate func deletePlace(atIndexPath indexPath: IndexPath) {
         let place = pin!.places![indexPath.row]
-        context.deleteObject(place)     // correct way
+        context.delete(place)     // correct way
         CoreDataStackManager.sharedInstance.saveContext()
     }
     

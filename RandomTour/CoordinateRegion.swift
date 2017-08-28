@@ -9,6 +9,7 @@
 import UIKit
 import MapKit
 
+// For archiving pins on the map
 class CoordinateRegion: NSObject, NSCoding
 {
     var mapRegion: MKCoordinateRegion
@@ -18,26 +19,26 @@ class CoordinateRegion: NSObject, NSCoding
     }
     
     // Note: Designated initializer can't be declared in an extension of 'CoordinateRegion';
-    // Iniitializer requirement 'init(coder:)' can only be satified by a 'required' in the definition of non-final class 'CoordinateRegion'
+    // Initializer requirement 'init(coder:)' can only be satified by a 'required' in the definition of non-final class 'CoordinateRegion'
     required init?(coder aDecoder: NSCoder) { // NS_DESIGNATED_INITIALIZER
-        let centerLatitude = aDecoder.decodeDoubleForKey(Constants.RegionCenterLatitude)
-        let centerLongitude = aDecoder.decodeDoubleForKey(Constants.RegionCenterLongitude)
-        let spanLatitudeDelta = aDecoder.decodeDoubleForKey(Constants.RegionSpanLatitudeDelta)
-        let spanlongitudeDelta = aDecoder.decodeDoubleForKey(Constants.RegionSpanLongitudeDelta)
+        let centerLatitude = aDecoder.decodeDouble(forKey: Constants.RegionCenterLatitude)
+        let centerLongitude = aDecoder.decodeDouble(forKey: Constants.RegionCenterLongitude)
+        let spanLatitudeDelta = aDecoder.decodeDouble(forKey: Constants.RegionSpanLatitudeDelta)
+        let spanlongitudeDelta = aDecoder.decodeDouble(forKey: Constants.RegionSpanLongitudeDelta)
         
         // Struct 'self.mapRegion' must be compelety initialized before a member is stored to
         mapRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: centerLatitude, longitude: centerLongitude),
             span: MKCoordinateSpan(latitudeDelta: spanLatitudeDelta, longitudeDelta: spanlongitudeDelta))
     }
     
-    func encodeWithCoder(aCoder: NSCoder) {
-        aCoder.encodeDouble(mapRegion.center.latitude, forKey: Constants.RegionCenterLatitude)
-        aCoder.encodeDouble(mapRegion.center.longitude, forKey: Constants.RegionCenterLongitude)
-        aCoder.encodeDouble(mapRegion.span.latitudeDelta, forKey: Constants.RegionSpanLatitudeDelta)
-        aCoder.encodeDouble(mapRegion.span.longitudeDelta, forKey: Constants.RegionSpanLongitudeDelta)
+    func encode(with aCoder: NSCoder) {
+        aCoder.encode(mapRegion.center.latitude, forKey: Constants.RegionCenterLatitude)
+        aCoder.encode(mapRegion.center.longitude, forKey: Constants.RegionCenterLongitude)
+        aCoder.encode(mapRegion.span.latitudeDelta, forKey: Constants.RegionSpanLatitudeDelta)
+        aCoder.encode(mapRegion.span.longitudeDelta, forKey: Constants.RegionSpanLongitudeDelta)
     }
     
-    private struct Constants {
+    fileprivate struct Constants {
         static let RegionCenterLatitude = "RegionCenterLatitude"
         static let RegionCenterLongitude = "RegionCenterLongitude"
         static let RegionSpanLatitudeDelta = "RegionSpanLatitudeDelta"

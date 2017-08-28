@@ -11,14 +11,14 @@ import CoreData
 
 class Place: NSManagedObject
 {
-    override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
-        super.init(entity: entity, insertIntoManagedObjectContext: context)
+    override init(entity: NSEntityDescription, insertInto context: NSManagedObjectContext?) {
+        super.init(entity: entity, insertInto: context)
     }
     
     init(placeName: String?, vicinity: String?, pin: Pin?, insertIntoManagedObjectContext context: NSManagedObjectContext)
     {
-        let aEntity = NSEntityDescription.entityForName("Place", inManagedObjectContext: context)
-        super.init(entity: aEntity!, insertIntoManagedObjectContext: context)
+        let aEntity = NSEntityDescription.entity(forEntityName: "Place", in: context)
+        super.init(entity: aEntity!, insertInto: context)
         
         self.name = placeName
         self.vicinity = vicinity

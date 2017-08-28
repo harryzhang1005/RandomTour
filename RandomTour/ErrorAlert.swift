@@ -8,10 +8,11 @@
 import UIKit
 
 class ErrorAlert {
+	
     // Here should use class func instead of static func
-    class func create(errorTitle: String, errorMessage: String, viewController: UIViewController)
+    class func create(_ errorTitle: String, errorMessage: String, viewController: UIViewController)
     {
-        let alert = UIAlertController(title: errorTitle, message: errorMessage, preferredStyle: UIAlertControllerStyle.Alert)
+        let alert = UIAlertController(title: errorTitle, message: errorMessage, preferredStyle: UIAlertControllerStyle.alert)
         
         let image = UIImage(named: "error")
         let imageView = UIImageView(image: image)
@@ -22,12 +23,13 @@ class ErrorAlert {
         
         alert.view.addSubview(imageView)
         
-        let alertAction = UIAlertAction(title: "OK", style: UIAlertActionStyle.Default, handler: nil)
+        let alertAction = UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: nil)
         alert.addAction(alertAction)
         
         // presentedViewController, The view controller that is presented by this view controller (viewController), or one of its ancestors in the view controller hierarchy. (read-only)
         if viewController.presentedViewController == nil {
-            viewController.presentViewController(alert, animated: true, completion: nil)
+            viewController.present(alert, animated: true, completion: nil)
         }
     }
+	
 }

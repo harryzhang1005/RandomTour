@@ -155,8 +155,8 @@
 			children = (
 				FA8822351C9A1F840078AF03 /* GCDQueues.swift */,
 				FAC355241C46BC5F0056BB76 /* ErrorAlert.swift */,
-				FAC3552A1C46BCC00056BB76 /* HttpRequestAPI.swift */,
 				FAC355251C46BC5F0056BB76 /* Reachability.swift */,
+				FAC3552A1C46BCC00056BB76 /* HttpRequestAPI.swift */,
 				FAC355311C46BEB30056BB76 /* CoreDataStackManager.swift */,
 			);
 			name = Common;
@@ -213,6 +213,8 @@
 				TargetAttributes = {
 					FAC354F91C46A1410056BB76 = {
 						CreatedOnToolsVersion = 7.2;
+						DevelopmentTeam = J33D983F34;
+						LastSwiftMigration = 0830;
 					};
 				};
 			};
@@ -388,12 +390,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = J33D983F34;
 				INFOPLIST_FILE = RandomTour/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				OTHER_CFLAGS = "";
 				OTHER_SWIFT_FLAGS = "-D DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.happyguy.RandomTour;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 3.0;
 			};
 			name = Debug;
 		};
@@ -401,11 +405,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = J33D983F34;
 				INFOPLIST_FILE = RandomTour/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				OTHER_SWIFT_FLAGS = "-D DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.happyguy.RandomTour;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 3.0;
 			};
 			name = Release;
 		};

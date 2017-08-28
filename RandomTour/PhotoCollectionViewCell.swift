@@ -21,11 +21,11 @@ class PhotoCollectionViewCell: UICollectionViewCell
     override func awakeFromNib() {
         super.awakeFromNib()
         
-        spinner.color = UIColor.blackColor()
+        spinner.color = UIColor.black
         spinner.hidesWhenStopped = true
     }
     
-    private func updateUI() {
+    fileprivate func updateUI() {
         // First, clean up
         self.backgroundView = nil
         self.selectedBackgroundView = nil
@@ -36,22 +36,23 @@ class PhotoCollectionViewCell: UICollectionViewCell
         }
     }
     
-    func configCell(photo: Photo)
+    func configCell(_ photo: Photo)
     {
         self.backgroundView = UIImageView(image: photo.image)
-        self.backgroundView?.contentMode = UIViewContentMode.ScaleAspectFill
+        self.backgroundView?.contentMode = UIViewContentMode.scaleAspectFill
+		
         if let photoRecord = photo.photoRecord {
-            photoRecord.state == .New ? self.spinner.startAnimating() : self.spinner.stopAnimating()
+            photoRecord.state == .new ? self.spinner.startAnimating() : self.spinner.stopAnimating()
         } else {
             self.spinner.startAnimating()
         }
         
         // for selected state
         let selectedBgView = UIView(frame: self.bounds)
-        selectedBgView.backgroundColor = UIColor(red: 255.0, green: 255.0, blue: 255.0, alpha: 0.75)
+        selectedBgView.backgroundColor = UIColor(white: 0.5, alpha: 0.5) //UIColor(red: 255.0, green: 255.0, blue: 255.0, alpha: 0.25)
         
         let checkmark = UIImageView(image: UIImage(named: "Checkmark")) // Note: image name is case sensitive
-        checkmark.contentMode = UIViewContentMode.BottomRight
+        checkmark.contentMode = UIViewContentMode.bottomRight
         checkmark.frame = self.bounds   // !!!: works, real cell item size
         //checkmark.frame = self.contentView.bounds // not work, contentView in IB size (0, 0, 120, 120), not real item size
         

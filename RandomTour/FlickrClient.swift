@@ -8,12 +8,12 @@
 
 import UIKit
 
-// Use Flickr REST API to get randomly photos
+// Use Flickr REST API to get random photos
 class FlickrClient: HttpRequestAPI
 {
     static let sharedInstance = FlickrClient()
     
-    private struct Constants {
+    fileprivate struct Constants {
         static let FlickrBaseURL = "https://api.flickr.com/services/rest/"
         static let FlickrPhotoSourceURL = "https://farm{farmId}.staticflickr.com/{serverId}/{photoId}_{secret}_{imageSize}.jpg"
         static let FlickrRestApiKey = "67fda1c0b25a2d0f325990f46d42fbb2"    // 3rd key
@@ -28,7 +28,7 @@ class FlickrClient: HttpRequestAPI
         static let MinimumPhotoPagesDiff = 300
     }
     
-    private struct ImageSize {
+    fileprivate struct ImageSize {
         static let SmallSquare = "s"
         static let LargeSquare = "q"
         static let Thumbnail = "t"
@@ -43,42 +43,42 @@ class FlickrClient: HttpRequestAPI
         static let Original = "o"
     }
     
-    private var currentPageNumber: Int?
+    fileprivate var currentPageNumber: Int?
     
     override init() {
         super.init()
         super.additionalURLParams = [
-            "api_key": Constants.FlickrRestApiKey,
-            "format": "json",
-            "nojsoncallback": 1,
-            "safe_search": 1            // for safe
+            "api_key": Constants.FlickrRestApiKey as AnyObject,
+            "format": "json" as AnyObject,
+            "nojsoncallback": 1 as AnyObject,
+            "safe_search": 1 as AnyObject            // for safe
         ]
     }
     
     // per_page (Optional) : Number of photos to return per page. If this argument is omitted, it defaults to 100. The maximum allowed value is 500.
     // page (Optional) : The page of results to return. If this argument is omitted, it defaults to 1.
-    func getFlickrPhoto(withPin pin: Pin, compHandler: CompHandler)
+    func getFlickrPhoto(withPin pin: Pin, compHandler: @escaping CompHandler)
     {
         let bboxParams = getBboxParams(pin.latitude, long: pin.longitude)
         
         photoSearchGetRandomPage(bboxParams) { randomPage, error in
             if error != nil {
-                compHandler(result: nil, error: error)
+                compHandler(nil, error)
             }
             else if let randomPageNum = randomPage {
                 let urlParams: [String:AnyObject] = [
-                    "method": Constants.FlickrPhotoSearch,
-                    "bbox": bboxParams,
-                    "per_page": Constants.FlickrPhotosPerPage,
-                    "page": randomPageNum
+                    "method": Constants.FlickrPhotoSearch as AnyObject,
+                    "bbox": bboxParams as AnyObject,
+                    "per_page": Constants.FlickrPhotosPerPage as AnyObject,
+                    "page": randomPageNum as AnyObject
                 ]
                 let url = Constants.FlickrBaseURL + self.urlAddParams(urlParams)
                 //print("final url: \(url)")
                 self.httpRequest(url) { (result, error) -> Void in
                     if error != nil {
-                        compHandler(result: nil, error: error)
+                        compHandler(nil, error)
                     } else {
-                        if let result = result, jsonPhotosDict = result["photos"] as? NSDictionary {
+                        if let result = result, let jsonPhotosDict = result["photos"] as? NSDictionary {
                             if let jsonPhotoArray = jsonPhotosDict["photo"] as? NSArray
                             {
                                 var photoProps = [[String:String]]()
@@ -88,27 +88,27 @@ class FlickrClient: HttpRequestAPI
                                         photoProps.append(photo!)
                                     }
                                 }
-                                compHandler(result: photoProps, error: nil)
+                                compHandler(photoProps, nil)
                             } else {
                                 let error = self.generateError("Couldn't get photo right now. Please try a different location.")
-                                compHandler(result: nil, error: error)
+                                compHandler(nil, error)
                             }
                         } else {
                             let error = self.generateError("Couldn't get photo right now. Please try a different location.")
-                            compHandler(result: nil, error: error)
+                            compHandler(nil, error)
                         }
                     }
                 }//httpClosure
             } else {
-                compHandler(result: nil, error: nil)
+                compHandler(nil, nil)
             }
         }
     }
     
     // MARK: - Privates
     
-    private func generateError(desc: String) -> NSError {
-        var dict = [NSObject:AnyObject]()
+    fileprivate func generateError(_ desc: String) -> NSError {
+        var dict = [AnyHashable: Any]()
         dict[NSLocalizedDescriptionKey] = desc
         
         //NSError(domain: String, code: Int, userInfo: [NSObject : AnyObject]?)
@@ -116,24 +116,25 @@ class FlickrClient: HttpRequestAPI
         return error
     }
     
-    private func photoSearchGetRandomPage(bboxParam: String, completionHandler: (randomPage: Int?, error: NSError?) -> Void)
+    fileprivate func photoSearchGetRandomPage(_ bboxParam: String,
+                                              completionHandler: @escaping (_ randomPage: Int?, _ error: NSError?) -> Void)
     {
         let urlParams: [String:AnyObject] = [
-            "method": Constants.FlickrPhotoSearch,
-            "bbox": bboxParam,
-            "per_page": 1   // get 1 result per page as we only want the "total" figure to generate a random page number
+            "method": Constants.FlickrPhotoSearch as AnyObject,
+            "bbox": bboxParam as AnyObject,
+            "per_page": 1 as AnyObject   // get 1 result per page as we only want the "total" figure to generate a random page number
         ]
         
         let url = Constants.FlickrBaseURL + urlAddParams(urlParams)
         httpRequest(url) { result, error in
             if error != nil {
-                completionHandler(randomPage: nil, error: error)
+                completionHandler(nil, error)
             } else {
                 if let photos = result!["photos"] as? NSDictionary {
                     if let totalPagesCount = Int( (photos["total"] as? String)! ) {
                         if totalPagesCount > 0 {
                             let randomPageNumber = self.getRandomPageNumber(maxX: UInt32(totalPagesCount))
-                            completionHandler(randomPage: randomPageNumber, error: nil)
+                            completionHandler(randomPageNumber, nil)
                         } else {
                             print("Couldn't get a random page number. Please try again later or try a different location.")
                         }
@@ -156,10 +157,10 @@ class FlickrClient: HttpRequestAPI
             title = "Evening in Abdij van Park III";
         }
     */
-    private func photoParamsToProperties(jsonPhoto: NSDictionary) -> [String:String]?
+    fileprivate func photoParamsToProperties(_ jsonPhoto: NSDictionary) -> [String:String]?
     {
-        if let photoId = jsonPhoto["id"] as? String, secret = jsonPhoto["secret"] as? String,
-            serverId = jsonPhoto["server"] as? String, farmId = jsonPhoto["farm"] as? Int {
+        if let photoId = jsonPhoto["id"] as? String, let secret = jsonPhoto["secret"] as? String,
+            let serverId = jsonPhoto["server"] as? String, let farmId = jsonPhoto["farm"] as? Int {
                 let imageSize = ImageSize.LargeSquare
                 let photoParams: [String:String] = [
                     "photoId": photoId,
@@ -192,7 +193,7 @@ class FlickrClient: HttpRequestAPI
     
     A tag, for instance, is considered a limiting agent as are user defined min_date_taken and min_date_upload parameters — If no limiting factor is passed we return only photos added in the last 12 hours (though we may extend the limit in the future).
     */
-    private func getBboxParams(lat: Double, long: Double) -> String
+    fileprivate func getBboxParams(_ lat: Double, long: Double) -> String
     {
         var miniLong = -180.0, miniLat = -90.0
         let maxiLong = 180.0, maxiLat = 90.0
@@ -209,7 +210,7 @@ class FlickrClient: HttpRequestAPI
         return "\(miniLong),\(miniLat),\(maxiLong),\(maxiLat)"
     }
 
-    private func getRandomPageNumber(maxX maxX: UInt32, minX: UInt32 = 1) -> Int
+    fileprivate func getRandomPageNumber(maxX: UInt32, minX: UInt32 = 1) -> Int
     {
         var result = ( arc4random() % (maxX - minX + 1) ) + minX
         var pageDiff = Int(minX)

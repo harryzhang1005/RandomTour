@@ -8,68 +8,75 @@
 import UIKit
 
 enum PhotoRecordState: Int {
-    case New = 0, Downloaded, Failed
+    case new = 0, downloaded, failed
+}
+
+extension UIImage {
+	class var defaultImage: UIImage? {
+		return UIImage(named: "PhotoPlaceholder")
+	}
 }
 
 class PhotoRecord {
-    let url: NSURL                  // remote URL
-    var state = PhotoRecordState.New
+    let url: URL						// remote URL
+    var state = PhotoRecordState.new
     var image = UIImage.defaultImage
     
-    init(url: NSURL) {
+    init(url: URL) {
         self.url = url
     }
     
-    lazy var dateFormatter: NSDateFormatter = {
+    lazy var dateFormatter: DateFormatter = {
         // NSDateFormatter.localizedStringFromDate(NSDate(), dateStyle: .ShortStyle, timeStyle: .NoStyle)
         // yyyy-MM-dd'T'HH:mm:ss'Z
-        let formatter = NSDateFormatter()
+        let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         return formatter
     }()
     
-    lazy var localImageURL: NSURL = {
-        //NSSearchPathDirectory.CachesDirectory
-        //NSSearchPathDirectory.DocumentDirectory
-        let dirURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).first
-        return dirURL!.URLByAppendingPathComponent("ImageName")
+    lazy var localImageURL: URL = {
+        //NSSearchPathDirectory.CachesDirectory, NSSearchPathDirectory.DocumentDirectory
+        let dirURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        return dirURL!.appendingPathComponent("ImageName")
     }()
     
     lazy var imageName: String = {
-        let name = self.url.pathComponents?.last
+        let name = self.url.pathComponents.last
         return name!
         //let timePrefix = self.dateFormatter.stringFromDate(NSDate()) + "_"
         //return timePrefix + name!
     }()
     
-    var imageDataFileLocalURL: NSURL { // local URL
-        return self.localImageURL.URLByAppendingPathComponent(self.imageName)
+    var imageDataFileLocalURL: URL { // local URL
+        return self.localImageURL.appendingPathComponent(self.imageName)
     }
     
     var isImageDataFileExisting: Bool {
         //print("url.path: \(imageDataFileLocalURL.path!)")                       /* /Users/MacBook/.../image.jpg */
         //print("url.absoluteString: \(imageDataFileLocalURL.absoluteString)")    /* file:///Users/MacBook/.../image.jpg */
-        return NSFileManager.defaultManager().fileExistsAtPath(self.imageDataFileLocalURL.path!)
+        return FileManager.default.fileExists(atPath: self.imageDataFileLocalURL.path)
     }
     
-    func saveImageDataToLocal(data: NSData) {
-        data.writeToURL(self.imageDataFileLocalURL, atomically: true)
+    func saveImageDataToLocal(_ data: Data) {
+        try? data.write(to: self.imageDataFileLocalURL, options: [.atomic])
     }
     
     func deleteImageDataFile() {
         if isImageDataFileExisting {
             do {
-                try NSFileManager.defaultManager().removeItemAtURL(self.imageDataFileLocalURL)
-                self.state = PhotoRecordState.New
+                try FileManager.default.removeItem(at: self.imageDataFileLocalURL)
+                self.state = PhotoRecordState.new
             } catch {
                 print("Delete local image data file failed!")
             }
         }
     }
+	
 }//EndClass
 
 // Photo download operation
-class PhotoDownloader: NSOperation {
+class PhotoDownloader: Operation {
+	
     let photoRecord: PhotoRecord
     
     init(photoRecord: PhotoRecord) {
@@ -78,29 +85,25 @@ class PhotoDownloader: NSOperation {
     
     override func main() {
         autoreleasepool {
-            if self.cancelled { return }
+            if self.isCancelled { return }
             
-            // support online and offline cases
-            let imageData = self.photoRecord.isImageDataFileExisting ? NSData(contentsOfURL: self.photoRecord.imageDataFileLocalURL) : NSData(contentsOfURL: self.photoRecord.url)
+            // support both online and offline
+            let imageData = self.photoRecord.isImageDataFileExisting ? (try? Data(contentsOf: self.photoRecord.imageDataFileLocalURL)) : (try? Data(contentsOf: self.photoRecord.url))
             
-            if self.cancelled { return }
+            if self.isCancelled { return }
             
             if let validImageData = imageData {
-                if !self.photoRecord.isImageDataFileExisting { self.photoRecord.saveImageDataToLocal(validImageData) }
+                if !self.photoRecord.isImageDataFileExisting {
+					self.photoRecord.saveImageDataToLocal(validImageData)
+				}
                 self.photoRecord.image = UIImage(data: validImageData)
-                self.photoRecord.state = PhotoRecordState.Downloaded
+                self.photoRecord.state = PhotoRecordState.downloaded
             }
             else {
-                self.photoRecord.state = PhotoRecordState.Failed
+                self.photoRecord.state = PhotoRecordState.failed
                 //self.photoRecord.image = UIImage(named: "failed")
             }
         }
     }
     
 }//EndOperation
-
-extension UIImage {
-    class var defaultImage: UIImage? {
-        return UIImage(named: "PhotoPlaceholder")
-    }
-}

@@ -12,13 +12,13 @@ import MapKit
 
 class Pin: NSManagedObject
 {
-    override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
-        super.init(entity: entity, insertIntoManagedObjectContext: context)
+    override init(entity: NSEntityDescription, insertInto context: NSManagedObjectContext?) {
+        super.init(entity: entity, insertInto: context)
     }
 
     init(latitude: Double, longitude: Double, insertIntoManagedObjectContext context: NSManagedObjectContext) {
-        let aEntity = NSEntityDescription.entityForName("Pin", inManagedObjectContext: context)
-        super.init(entity: aEntity!, insertIntoManagedObjectContext: context)
+        let aEntity = NSEntityDescription.entity(forEntityName: "Pin", in: context)
+        super.init(entity: aEntity!, insertInto: context)
         
         self.latitude = latitude
         self.longitude = longitude
@@ -34,13 +34,14 @@ class Pin: NSManagedObject
         }
     }
     
-    private func deleteLocalImageDataFile(photo: Photo) {
+    fileprivate func deleteLocalImageDataFile(_ photo: Photo) {
         if let photoRecord = photo.photoRecord {
             photoRecord.deleteImageDataFile()
         }
     }
 }//EndClass
 
+// Pin on the map
 extension Pin: MKAnnotation {
     
     var coordinate: CLLocationCoordinate2D {
@@ -57,7 +58,7 @@ extension Pin: MKAnnotation {
     var title: String? { return "Hello, there" }
     var subtitle: String? { return "(\(formatNumberToString(latitude)), \(formatNumberToString(longitude)))" }
     
-    private func formatNumberToString(num: Double) -> String {
+    fileprivate func formatNumberToString(_ num: Double) -> String {
         return String(format: "%.2f", num)
     }
 }

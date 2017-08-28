@@ -16,6 +16,6 @@ extension Place {
 
     @NSManaged var name: String?        // The place name
     @NSManaged var vicinity: String?    // The neighbours of place
-    @NSManaged var pin: Pin?            // The place belongs to which pin ?
+    @NSManaged var pin: Pin?            // Which pin does the place belong to?
 
 }
